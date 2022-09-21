@@ -59,8 +59,6 @@ get_landwater = function(
     land_value  = 0
     ){
 
-  # r_path = landtype_paths$full_path[1]
-
   # read in landtype, set CRS if necessary
   landtype <-
     r_path %>%
@@ -76,7 +74,7 @@ get_landwater = function(
       ) %>%
     terra::clamp(
       lower  = 0,
-      values = F
+      values = FALSE
     )
 
   # make land values = 0, water = 1
@@ -284,6 +282,7 @@ get_water_pts = function(
 #' @param col_index numeric column number of matrix cell to get indices of diagonals for
 #' @param direction character indicating which direction get diagonal indices for. Either "top_left", "top_right", "bottom_left", or "bottom_right". Default is "top_left".
 #' @param id_col logical. Whether a column stating the direction of the diagonal should be included. Default is FALSE, no direction column is added.
+#' @param verbose logical. Whether messages should output to console. Default is FALSE, no messages output.
 #' @return dataframe with columns for the row/column indexes of the diagonol cells. Each row of the dataframe indicates a diagonal cell
 #' @export
 index_diag <- function(
@@ -291,24 +290,50 @@ index_diag <- function(
     row_index = NULL,
     col_index = NULL,
     direction = "top_left",
-    id_col    = FALSE
+    id_col    = FALSE,
+    verbose   = FALSE
 ) {
 
-  # m <- lw_mat
-  # row_index <- row_df$row[z]
-  # col_index <- row_df$col[z]
+  # m <- rmat
+  # row_index <- row_nest$data[[1]]$row
+  # col_index <- row_nest$data[[1]]$col
+
 
   # top left/north west diagonal
   if(direction == "top_left") {
 
-    message(paste0("Retrieving top left diaganol indices..."))
+    if(verbose == TRUE) {
+      message(paste0("Retrieving top left diaganol indices..."))
+      }
+    # check if row 1
+    if(row_index == 1) {
 
-    m
+      row_start = 1
+
+    } else {
+
+      row_start = row_index - 1
+
+    }
+
+    # check if col 1
+    if(col_index == 1) {
+
+      col_start = 1
+
+    } else {
+
+      col_start = col_index - 1
+
+    }
+
     # sequence of northeast columns
-    col_seq <- seq(1, col_index - 1, 1)
+    col_seq <- seq(1, col_start, 1)
+    # col_seq <- seq(1, col_index - 1, 1)
 
     # sequence of northeast rows
-    row_seq <- seq(row_index - 1,  1,  -1)
+    row_seq <- seq(row_start,  1,  -1)
+    # row_seq <- seq(row_index - 1,  1,  -1)
 
     # minimum sequence
     min_seq <- min(length(col_seq), length(row_seq))
@@ -323,13 +348,38 @@ index_diag <- function(
   # top right/north east diagonal
   if(direction == "top_right") {
 
-    message(paste0("Retrieving top right diaganol indices..."))
+    if(verbose == TRUE) {
+      message(paste0("Retrieving top right diaganol indices..."))
+    }
+
+    # check if row 1
+    if(row_index == 1) {
+
+      row_start = 1
+
+    } else {
+
+      row_start = row_index - 1
+
+    }
+
+    # check if col 1
+    if(col_index == ncol(m)) {
+
+      col_start = col_index
+
+    } else {
+
+      col_start = col_index + 1
+
+    }
 
     # sequence of northeast columns
-    col_seq <- seq(col_index + 1, ncol(m), 1)
+    col_seq <- seq(col_start, ncol(m), 1)
+    # col_seq <- seq(col_index + 1, ncol(m), 1)
 
     # sequence of northeast rows
-    row_seq <- seq(row_index - 1,  1,  -1)
+    row_seq <- seq(row_start,  1,  -1)
 
     # minimum sequence
     min_seq <- min(length(col_seq), length(row_seq))
@@ -345,13 +395,39 @@ index_diag <- function(
   # bottom left/south west diagonal
   if(direction == "bottom_left") {
 
-    message(paste0("Retrieving bottom left diaganol indices..."))
+    if(verbose == TRUE) {
+      message(paste0("Retrieving bottom left diaganol indices..."))
+    }
+
+    # check if row 1
+    if(row_index == nrow(m)) {
+
+      row_start = row_index
+
+    } else {
+
+      row_start = row_index + 1
+
+    }
+
+    # check if col 1
+    if(col_index == 1) {
+
+      col_start = col_index
+
+    } else {
+
+      col_start = col_index - 1
+
+    }
 
     # sequence of northeast columns
-    col_seq <- seq(1, col_index - 1, 1)
+    col_seq <- seq(1, col_start, 1)
+    # col_seq <- seq(1, col_index - 1, 1)
 
     # sequence of northeast rows
-    row_seq <- seq(row_index + 1, nrow(m), 1)
+    row_seq <- seq(row_start, nrow(m), 1)
+    # row_seq <- seq(row_index + 1, nrow(m), 1)
 
     # minimum sequence
     min_seq <- min(length(col_seq), length(row_seq))
@@ -367,13 +443,39 @@ index_diag <- function(
   # bottom right/south east diagonal
   if(direction == "bottom_right") {
 
-    message(paste0("Retrieving bottom right diaganol indices..."))
+    if(verbose == TRUE) {
+      message(paste0("Retrieving bottom right diaganol indices..."))
+    }
+
+    # check if row 1
+    if(row_index == nrow(m)) {
+
+      row_start = row_index
+
+    } else {
+
+      row_start = row_index + 1
+
+    }
+
+    # check if col 1
+    if(col_index == ncol(m)) {
+
+      col_start = col_index
+
+    } else {
+
+      col_start = col_index + 1
+
+    }
 
     # sequence of northeast columns
-    col_seq <- seq(col_index + 1, ncol(m), 1)
+    col_seq <- seq(col_start, ncol(m), 1)
+    # col_seq <- seq(col_index + 1, ncol(m), 1)
 
     # sequence of northeast rows
-    row_seq <- seq(row_index + 1, nrow(m), 1)
+    row_seq <- seq(row_start, nrow(m), 1)
+    # row_seq <- seq(row_index + 1, nrow(m), 1)
 
     # minimum sequence
     min_seq <- min(length(col_seq), length(row_seq))
@@ -475,7 +577,7 @@ count_diag <- function(
     cell_val <- m[diag_indices$diag_row[k], diag_indices$diag_col[k]]
 
     # if cell value is 0, stop loop
-    if (cell_val == stop_value) {
+    if (cell_val == stop_value | is.na(cell_val)) {
 
       if(verbose == TRUE) {
         message(paste0(stop_value, " detected, stopping counter"))
@@ -506,105 +608,76 @@ count_diag <- function(
 
 }
 
-#' Count the diagnol cells from a matrix index to end of matrix or a stopping value.
-#'
-#' @param m matrix to count diagnols
-#' @param diag_indices dataframe with the indices of matrix diagnols from a reference cell
-#' @param stop_value numeric value to stop counting cells if encountered. Default is 0
-#' @param verbose logical, whether to print loop messages or not. Default is TRUE
-#'
-#' @return value indicating the number of diagonal cells before specific value comes up
+#' Check run length encoding output for cell run of zeros
+#' @param rle_vect rle object
+#' @param verbose logical, whether messages should be printed. Default is FALSE, no messages print.
+#' @return Count of consecutive non-zero cells from a matrix cell, extending out in a given direction
 #' @export
-#'
-#' @examples
-count_diag2 <- function(m, diag_indices, stop_value = 0, verbose = TRUE) {
-  # m <- lw_mat
-  # row_index <- row_nest$data[[1]]$diag_row
-  # col_index <- row_nest$data[[1]]$diag_col
-  # diag_indices <- row_nest$indices[[1]]
-  # row_nest$data[[1]]
-  # rm(counter, diag_df, cell_val, count_lst, n, k)
-  # counter <- 1
-  diag_lst <-
-    diag_indices %>%
-    dplyr::group_by(direction) %>%
-    dplyr::group_split()
+check_zeros <- function(rle_vect, verbose = FALSE) {
+  # rle_vect <- right_rle
+  # right_rle$values
+  # check if any zeros occur after calculating RLE on a vector
+  if(0 %in% unique(rle_vect$values)) {
 
-  # empty list to add to
-  count_lst <- list()
+    if(verbose == TRUE) {
+      message(paste0("Calculating consecutive non-zero cell count..."))
+    }
+    # rle_vect$lengths[(which(is.na(rle_vect$values))[1]) - 1]
+    # count of up/down cells before a 0
+    count   <- rle_vect$lengths[(which(rle_vect$values == 0)[1]) - 1]
 
-  # loop through diagonals and add to cell counter until a 0 is reached
-  for (k in 1:length(diag_lst)) {
-    # for (k in 1:nrow(diag_indices)) {
-    # k <- 3
+  } else {
 
-    diag_df <- diag_lst[[k]]
-
-    counter <- 1
-
-    for (n in 1:nrow(diag_df)) {
-      #  diag_df$diag_row[n]
-      # n = 1
-      # n = 1
-      # diag_df$diag_col
-      if(verbose == TRUE) {
-
-        message(paste0("iter: ", n, " (r",   diag_df$diag_row[n], ", c",   diag_df$diag_col[n], ")"))
-
-      }
-
-      # value of kth southwest cell
-      cell_val <- m[diag_df$diag_row[n], diag_df$diag_col[n]]
-
-      # if cell value is 0, stop loop
-      if (cell_val == stop_value) {
-
-        if(verbose == TRUE) {
-          message(paste0(stop_value, " detected, stopping counter"))
-        }
-
-        data.frame(
-          diag_count = counter,
-          direction  = diag_df$direction[1]
-        )
-
-        break
-      }
-
-      counter <- counter + 1
-
+    if(verbose == TRUE) {
+      message(paste0("Calculating consecutive non-zero cell count..."))
+      message(paste0("No zeros found, all cells counted"))
     }
 
-    # add diagnol count to datarame
-    count_lst[[k]] <- data.frame(
-      diag_count = counter,
-      direction  = diag_df$direction[1]
-    )
+    # count of up/down cells when no zeros
+    count   <- rle_vect$lengths
 
   }
 
-  return(counter)
+  return(count)
 
 }
 
-#' Count number of cells to the left/right of a matrix cell
+#' Count number of consequetive cells around a matrix cell to the up/down/left/right of a matrix cell
 #' @param m matrix of interest
-#' @param row_index numeric row number of matrix cell to calculate cell count to left/right
-#' @param col_index numeric column number of matrix cell to calculate cell count to left/right
+#' @param row_index numeric row number of matrix cell to calculate cell count going up/down/left/right of the specified cell
+#' @param col_index numeric column number of matrix cell to calculate cell count going up/down/left/right of the specified cell
 #' @param wide logical, whether dataframe should be returned in wide or long format. Default is FALSE, returns long dataframe column number of matrix cell to calculate cell count to left/right
 #'
-#' @return dataframe with cell counts to the left and right of a specified cell in a matrix
+#' @return dataframe with consequetive cell counts (non-zero cells) up/down/left/right of the specified cell in a matrix
 #' @export
-side_lengths <- function(
+side_count <- function(
     m,
     row_index = NULL,
     col_index = NULL,
     wide      = FALSE
 ) {
-  # m <- lw_mat
-  # row_index <- row_nest$data[[2]]$row
-  # col_index <- row_nest$data[[2]]$col
+  # m         = m
+  # row_index = row_nest$data[[4]]$row
+  # col_index = row_nest$data[[4]]$col
+  # wide      = FALSE
 
+  # ---- col (up/down) ----
+  # vector of current matrix col
+  vcol <- m[, col_index]
+
+  # cells to the up/down of occurrence of water cell
+  up_cells   <- 1:row_index
+  down_cells <- row_index:nrow(m)
+
+  # run length encoding of up/down cells
+  up_rle    <- rle(rev(vcol[up_cells]))
+  down_rle  <- rle(vcol[down_cells])
+
+  # count of up/down cells before a 0, if no zeros occur, returns length of consecutive 1s
+  up_count   <- check_zeros(rle_vect = up_rle)
+  down_count <- check_zeros(rle_vect = down_rle)
+
+  # ---- row (left/right) ----
   # vector of current matrix row
   vrow <- m[row_index, ]
 
@@ -616,18 +689,22 @@ side_lengths <- function(
   left_rle   <- rle(rev(vrow[left_cells]))
   right_rle  <- rle(vrow[right_cells])
 
-  # count of left/right cells before a 0
-  left_count  <- left_rle$lengths[(which(left_rle$values == 0)[1]) - 1]
-  right_count <- right_rle$lengths[(which(right_rle$values == 0)[1]) - 1]
+  # count of left/right  cells before a 0, if no zeros occur, returns length of consecutive 1s
+  left_count   <- check_zeros(rle_vect = left_rle)
+  right_count  <- check_zeros(rle_vect = right_rle)
 
   # count of cells on right and left side of cell before a 0 occurs
   side_df <-
     data.frame(
       row   = row_index,
       col   = col_index,
+      up    = up_count,
+      down  = down_count,
       left  = left_count,
       right = right_count
     )
+
+
 
   # if wide data requested
   if(wide == TRUE) {
@@ -640,7 +717,7 @@ side_lengths <- function(
     side_df <-
       side_df %>%
       tidyr::pivot_longer(
-        cols      = c(left, right),
+        cols      = c(up, down, left, right),
         names_to  = "direction",
         values_to = "cell_count"
       ) %>%
@@ -650,15 +727,91 @@ side_lengths <- function(
 
   }
 
-  # index of first 0 occurance
-  # left_idx   <- which(left_rle$values == 0)[1]
-  # right_idx   <- which(right_rle$values == 0)[1]
-
-  # count of left/right cells before a 0
-  # left_count <- left_rle$lengths[left_idx - 1]
-  # right_count <- right_rle$lengths[right_idx - 1]
 }
 
+dist_summary <- function(m,
+                         indices_df) {
+  # m = rmat
+  # indices_df = idx[[i]]  # diaganol direction to map over
+
+  diag_dirs <- c("top_left", "top_right", "bottom_left", "bottom_right")
+# row_nest$data[[4]]$row
+# row_nest$data[[4]]$col
+# side_count(
+#   m         = m,
+#   row_index = row_nest$data[[4]]$row,
+#   col_index = row_nest$data[[4]]$col,
+#   wide      = FALSE
+# )
+  # nest and map over each row and get the indices of the diagonals
+  row_nest <-
+    indices_df %>%
+    dplyr::mutate(row_id = 1:dplyr::n()) %>%
+    dplyr::group_by(row_id) %>%
+    tidyr::nest() %>%
+    dplyr::mutate(
+      sides   = purrr::map(
+        .x = data,
+        .f = ~side_count(
+          m         = m,
+          row_index = .x$row,
+          col_index = .x$col,
+          wide      = FALSE
+        )
+      ),
+      indices = purrr::map(
+        .x = data,
+        .f = ~lapply(1:length(diag_dirs), function(y) {
+          index_diag(
+            m         = m,
+            row_index = .x$row,
+            col_index = .x$col,
+            direction = diag_dirs[y],
+            id_col    = TRUE,
+            verbose   = FALSE
+          )
+        }) %>%
+          dplyr::bind_rows()
+      ),
+      diag_counts = purrr::map(
+        .x = indices,
+        .f = ~count_diag_dir(
+          m            = m,
+          diag_indices = .x,
+          verbose      = FALSE
+        )
+      )
+    )
+
+  # row distances
+  row_dist <-
+    row_nest %>%
+    dplyr::select(-sides, -indices) %>%
+    tidyr::unnest(c(data, diag_counts)) %>%
+    dplyr::bind_rows(
+      tidyr::unnest(
+        dplyr::select(row_nest, -diag_counts, -indices),
+        c(data, sides)
+      )
+    ) %>%
+    dplyr::mutate(
+      # convert_factor = 480,
+      convert_factor = dplyr::case_when(
+        grepl("_", direction) ~ 678.8225,
+        TRUE                  ~ 480
+      ),
+      distance = cell_count*convert_factor
+    ) %>%
+    dplyr::group_by(row_id, row, col) %>%
+    dplyr::summarise(
+      cell_count = mean(cell_count, na.rm = T),
+      distance   = mean(distance, na.rm = T)
+    ) %>%
+    dplyr::ungroup()
+
+  return(row_dist)
+
+}
 library(sf)
 library(doParallel)
 library(parallel)
@@ -666,12 +819,10 @@ library(foreach)
 library(dplyr)
 
 library(tidyverse)
-library(foreach)
-library(doParallel)
-library(parallel)
 library(sf)
 library(terra)
 library(raster)
+
 source("R/parse_directory.R")
 # hsi grid for resampling
 # hsi_grid <- terra::rast("data/hsi_grid.tif")
@@ -686,7 +837,9 @@ landtype_files <- parse_files(dir = model_dirs$path[1]) %>%
 # r <- landtype_files$full_path[1]
 
 # tmpf  <- raster::raster("C:/Users/angus/OneDrive/Desktop/lynker/CPRA/data/fetch/raster/fetch_mean_dist_480m_resampled.tif")
+r_path = landtype_files$full_path[1]
 
+fetch_r <- get_fetch(r_path = r_path, ncores = 12)
 landtype <- get_landwater(r_path = landtype_files$full_path[1])
 
 pt_buffer <- data.frame(
@@ -713,23 +866,28 @@ plot(lw_crop)
 #' @description returns a dataframe with fetch lengths for a coastal area
 #' @param r_path Path to binary land type raster TIF. Land and water values only.
 #' @param r Path to binary land type raster TIF. Land and water values only.
-#' @param land_value numeric indicating what value land is represented by in raster. Default is 0 to conform to get_landwater() output
-#' @param land_out umeric indicating what value land should be represented by in output raster. Default is 2
-#' @return SpatVector representing water points
+#' @param ncores numeric indicating how many cores to use during parallel processing
+#' @return SpatVector representing mean wind fetch distance
+#' @importFrom dplyr arrange group_by group_split mutate select bind_rows n summarise case_when ungroup
+#' @importFrom purrr map
+#' @importFrom tidyr nest unnest
+#' @importFrom foreach foreach
+#' @importFrom parallel makeCluster stopCluster
+#' @importFrom doParallel registerDoParallel stopImplicitCluster
+#' @importFrom terra as.matrix rast crs ext
 #' @export
-#' @importFrom terra setValues values
 get_fetch = function(
     r_path = NULL,
-    r      = NULL
+    r      = NULL,
+    ncores = 10
 ) {
-
   # error if no path or raster are given
   if(is.null(r_path) & is.null(r)) {
 
     stop(paste0("Please enter a path to a binary landwater raster or a SpatRaster object"))
 
   }
-
+  # r_path = landtype_files$full_path[1]
   # if no path to raster is given, read it in
   if(!is.null(r_path)) {
 
@@ -737,8 +895,31 @@ get_fetch = function(
 
   }
 
+  # replace NA raster values w/ 0 for calcs
+  r <- terra::classify(r, cbind(NA, 0))
+  # r %>%
+  #   raster::raster() %>%
+  #   mapview::mapview()
+
+  # pt_buffer <- data.frame(
+  #   lng = 730390,
+  #   lat = 3240040
+  # ) %>%
+  #   sf::st_as_sf(coords = c("lng", "lat"), crs = 26915) %>%
+  #   sf::st_buffer(25000) %>%
+  #   sf::st_bbox() %>%
+  #   sf::st_as_sfc() %>%
+  #   terra::vect()
+  #
+  # lw_crop <-
+  #   r %>%
+  #   terra::crop(pt_buffer) %>%
+  #   terra::mask(pt_buffer)
+  # plot(lw_crop)
+
   # make landwater raster a wide matrix
   rmat <- terra::as.matrix(r, wide = TRUE)
+  # rmat <- terra::as.matrix(lw_crop, wide = TRUE)
 
   # get indices of water points
   idx <-
@@ -747,97 +928,116 @@ get_fetch = function(
     dplyr::arrange(row) %>%
     dplyr::group_by(row) %>%
     dplyr::group_split()
+# i <- 1
 
-  # i = 3
+  message(paste0("Calculating fetch distances..."))
+  # ncores = 12
+  cl    <- parallel::makeCluster(ncores) #not to overload your computer
 
-  # sequence along rows
-  for (i in seq_along(idx)) {
+  # register parallel backend
+  doParallel::registerDoParallel(cl)
 
-    print(i)
+  # run a loop using a parallel backend. ~2x faster
+  fetch_loop <- foreach::foreach(i = 1:length(idx),
+                                 .combine  = "rbind",
+                                 .export   = c('side_count', 'index_diag', 'count_diag_dir', 'count_diag' ,'dist_summary', 'check_zeros'),
+                                 .packages = c("dplyr", "tidyr", "purrr")) %dopar% {
 
-    # data frame with row indices
-    row_df <- idx[[i]]
+                                  row_dist <- dist_summary(m = rmat, indices_df = idx[[i]])
+                                  row_dist
 
-    # diaganol direction to map over
-    diag_dirs <- c("top_left", "top_right", "bottom_left", "bottom_right")
+                                 }
 
-    # nest and map over each row and get the indices of the diagonals
-    row_nest <-
-      row_df %>%
-      dplyr::mutate(row_id = 1:n()) %>%
-      dplyr::group_by(row_id) %>%
-      tidyr::nest() %>%
-      dplyr::mutate(
-        sides   = map(
-          .x = data,
-          .f = ~side_lengths(
-            m         = rmat,
-            row_index = .x$row,
-            col_index = .x$col,
-            wide      = FALSE
-          )
-        ),
-        indices = map(
-          .x = data,
-          .f = ~lapply(1:length(diag_dirs), function(y) {
-            index_diag(
-              m         = rmat,
-              row_index = .x$row,
-              col_index = .x$col,
-              direction = diag_dirs[y],
-              id_col    = TRUE
-              )
-            }) %>%
-            dplyr::bind_rows()
-          ))
+  # stop extra workers
+  doParallel::stopImplicitCluster()
+  parallel::stopCluster(cl)
 
-    # diagonals
-    row_diags <-
-      row_nest %>%
-      dplyr::select(row_id, data, indices) %>%
-      dplyr::mutate(
-        diag_counts = map(
-          .x = indices,
-          .f = ~count_diag_dir(
-            m            = rmat,
-            diag_indices = .x,
-            verbose      = FALSE
-            )
-          )
-        ) %>%
-      dplyr::select(row_id, data, diag_counts) %>%
-      tidyr::unnest(c(data, diag_counts)) %>%
-      dplyr::ungroup()
+  row_lst <- list()
+  for (i in 1:length(idx)) {
 
-    # sides
-    row_sides <-
-      row_nest %>%
-      dplyr::select(row_id, data, sides) %>%
-      tidyr::unnest(c(data, sides)) %>%
-      dplyr::ungroup()
+    message(paste0("Index: ", i, "/", length(indx)))
+    row_dist <- dist_summary(m = rmat, indices_df = idx[[i]])
 
-    row_dist <-
-      row_diags %>%
-      dplyr::bind_rows(row_sides) %>%
-      dplyr::mutate(
-        # convert_factor = 480,
-        convert_factor = dplyr::case_when(
-          grepl("_", direction) ~ 678.8225,
-          TRUE                  ~ 480
-        ),
-        distance = cell_count*convert_factor
-      ) %>%
-      dplyr::group_by(row_id, row, col) %>%
-      dplyr::summarise(
-        cell_count = mean(cell_count, na.rm = T),
-        distance   = mean(distance, na.rm = T)
-      )
-    }
+    row_lst[[i]] <- row_dist
 
-return(row_dist)
+  }
+  rmat2 <- rmat
+  # loop over each row in dataframe and replace old water matrix values with mean fetch distances
+  for (j in 1:nrow(fetch_loop)) {
+
+    message(paste0("Row: ", fetch_loop$row[j], " col: ", fetch_loop$col[j]))
+    rmat2[fetch_loop$row[j], fetch_loop$col[j]]  <- fetch_loop$distance[j]
+
+  }
+
+  # replace 0 values (land) with NA
+  rmat2[which(rmat2 == 0)] <- NA
+
+  # create fetch raster from matrix
+  fetch_r <-
+    terra::rast(
+      rmat2,
+      crs    = terra::crs(r),
+      extent = terra::ext(r)
+    )
+
+  plot(fetch_r)
+  return(fetch_r)
+
 
 }
-
+# system.time(
+#   lst_dist <- lapply(1:length(idx), function(x) {
+#     # idx[[1]]$row
+#     message(paste0(x))
+#     sides <- side_count(
+#       m         = rmat,
+#       row_index = idx[[x]]$row,
+#       col_index = idx[[x]]$col,
+#       wide      = FALSE
+#     )
+#
+#   })
+# )
+# system.time(
+#   diag_lst <- lapply(1:length(idx), function(x) {
+#     # idx[[1]]$row
+#     message(paste0(x))
+#
+#     lapply(1:length(diag_dirs), function(y) {
+#       index_diag(
+#         m         = rmat,
+#         row_index = idx[[x]]$row,
+#         col_index = idx[[x]]$col,
+#         direction = diag_dirs[y],
+#         id_col    = TRUE,
+#         verbose   = FALSE
+#       )
+#     }) %>%
+#       dplyr::bind_rows()
+#   })
+# )
+# diag_lst[[1]]
+# system.time(
+#   diag_counts <- lapply(1:length(diag_lst), function(y) {
+#     message(paste0(y, "/", length(diag_lst)))
+#     count_diag_dir(
+#       m         = rmat,
+#       diag_indices = diag_lst[[y]],
+#       verbose      = FALSE
+#     )
+#   })
+# )
+# system.time(
+#   diag_counts  <-  purrr::map(
+#     .x = indices,
+#     .f = ~count_diag_dir(
+#       m            = rmat,
+#       diag_indices = .x,
+#       verbose      = FALSE
+#     )
+#   )
+# )
 # *****************************************************************************
 
 # z <-  2
@@ -1015,293 +1215,5 @@ return(row_dist)
 # }
 
 
-
-f = distanceFromPoints(raster::raster(land), sf::st_as_sf(water_pts[seq(82000, 82100, 1),]))
-plot(f)
-
 # **************************************************************************************
 # **************************************************************************************
-
-r = landtype_files$full_path[1]
-
-mapview::mapview(f) + tmpf
-
-# as.data.frame(r, xy=TRUE, na.rm=TRUE)
-# writeRaster(landtype, "landwater_binary.tif")
-# tmpf  <- raster::raster("C:/Users/angus/OneDrive/Desktop/lynker/CPRA/data/fetch/raster/fetch_mean_dist_480m_resampled.tif")
-# writeRaster(tmpf, "correct_distance_raster.tif")
- library(mapview)
-
-  landtype <-
-    r %>%
-    get_landwater()
-
-  land_r <-
-    landtype %>%
-    get_land() %>%
-    raster::raster()
-
-  terra::split()
-  land_t <-
-    landtype %>%
-    get_land() %>%
-    raster::raster()
-
-  land <-
-    landtype %>%
-    get_land(as_polygon = T)
-
-  plot(land)
-
-  water_pts <-
-    r %>%
-    get_landwater() %>%
-    get_water_pts()
-
-  water_pts2 <-
-    water_pts %>%
-    sf::st_as_sf() %>%
-    dplyr::slice(seq(82000, 82100, 1)) %>%
-    terra::vect()
-
-
-  # water_pts2[82,] %>%
-    water_pts2[72,] %>%
-    sf::st_as_sf() %>%
-    sf::st_coordinates()
-
-  pt_buffer <- data.frame(
-    lng = 730390,
-    lat = 3240040
-    ) %>%
-    sf::st_as_sf(coords = c("lng", "lat"), crs = 26915) %>%
-    sf::st_buffer(50000) %>%
-    sf::st_bbox() %>%
-    sf::st_as_sfc() %>%
-    terra::vect()
-
-  lw_crop <-
-    landtype %>%
-    terra::crop(pt_buffer) %>%
-    terra::mask(pt_buffer)
-  plot(lw_crop)
-
-  terra::as.matrix()
-
-  # *****************************************************************************
-  lw_mat <- terra::as.matrix(landtype, wide = TRUE)
-
-  lw_points <-
-    # lw_crop %>%
-    landtype %>%
-    as.data.frame(xy = T) %>%
-    sf::st_as_sf(coords = c("x", "y"), crs = 26915) %>%
-    stats::setNames(c('vals', 'geometry'))
-
-  l_pts <-
-    lw_points %>%
-    dplyr::filter(vals == 0)
-
-  w_pts <-
-    lw_points %>%
-    dplyr::filter(vals == 1)
-
-  dist_df <- as.data.frame(dist_matrix)
-  i <- 1
-  for (i in 1:length(w_pts)) {
-    message(paste0("Point: ", i))
-
-    w_buff <-
-      w_pts[i, ] %>%
-      sf::st_buffer(20000)
-
-    new_l_pts <- sf::st_intersection(w_buff, l_pts)
-
-    dist_df <- sf::st_distance(w_pts[i, ], new_l_pts)
-
-    mean_dist <- mean(dist_df)
-
-mapview::mapview(new_l_pts) + w_pts[i, ]
-  }
-  system.time(
-  dist_matrix  <- st_distance(w_pts, l_pts)
-  )
-  diag(dist_matrix) <- NA
-  w_pts$distance <- matrixStats::rowMins(dist_matrix)
-  w_pts$distance <- matrixStats::rowMeans2(dist_matrix)
-
-  mapview::mapview(w_pts, color = "red") + l_pts
-  # convert matrix to data frame and set column and row names
-  dist_matrix <- data.frame(dist_matrix)
-  names(dist_matrix) <- pts$cell
-  rownames(dist_matrix) <- pts$cell
-  lw_mat == 1
-  windex <- lw_mat[1,] == 1
-  tmp <- which(lw_mat ==1, arr.ind = TRUE) %>%
-    data.frame() %>%
-    dplyr::mutate(num = 1:n())
-
-  ggplot() +
-    geom_point(data = tmp, aes(x = row, y = col))
-  condition <- function(x) {
-    x >= 1
-  }
-
-  lw_mat[1, 6]
-  rle(lw_mat[1,])
-  r <- rle(condition(lw_mat[1,]))
-
-  r$lengths[r$values == TRUE]
-  max(r$lengths[r$values])
-  rle(lw_mat[3,])
-  which(lw_mat[3, ])
-  lw_mat[1,]
-  which(lw_mat[1,] == 0)
-  lw_mat[1,2]
-  trialtype <- c(1,1,0,1,1,0,0,1,0,1)
-  RT <- c(100,200,300,400,500,600,700,800,900,950)
-  fakedata <- cbind(trialtype,RT)
-  zis <- which(fakedata[,'trialtype']==0)
-  data.frame(x=seq_along(zis),numones=diff(c(0L,zis))-1L);
-  CHR <- c(1,1,1,1,2,2,2,3,3,3,3)
-  POS <- c(10,10000,12000,15000,25,75,50000,50,100,40000,45000)
-  CONDITION <- c(F,T,T,F,T,F,F,T,F,T,F)
-  df <- data.frame(CHR,POS,CONDITION)
-
-  CHR_r <- c(1,1,2,2,3,3)
-  from <- c(10,10000,25,50000,50,40000)
-  to <- c(10,15000,75,50000,100,45000)
-  count <- c(1,3,2,1,2,2)
-  result <- data.frame(CHR_r,from,to,count)
-
-  count_of=c(0,length(from))
-  for  (i in c(1:length(from))){
-    ind=which(POS>from[i] & POS<to[i])
-    count_of[i]=length(ind)
-  }
-  which(lw_mat, arr.ind = TRUE)
-  apply(lw_mat, 1, dist)
-dist(lw_mat)
-  apply(lw_mat, 2, function (x) length(x)-1)
-    df <- data.frame(x = c(11:20), y= c(12:21))
-    dst <- dist(df)
-  m1 <- as.matrix(dst)
-  which(m1==1, arr.ind=TRUE)
-
-  writeRaster(lw_crop, "landwater_subset.tif")
-  lw_crop
-  plot(lw_crop)
-  mapview(pt_buffer)
-  pt_dist <-
-    land %>%
-    terra::distance(water_pts2, symmetrical=T)
-  pt_dist
-  water_pts2 %>%
-    sf::st_as_sf() %>%
-  mapview() + land_r
-  # terra:::.oldGridDistance()
-
-  # # plot(landtype)
-  # land <-
-  #   r %>%
-  #   get_landwater() %>%
-  #   get_land(as_polygon = T)
-  #
-  # lw_bound <-
-  #   landtype %>%
-  #   terra::boundaries()
-  # plot(lw_bound)
-  # lw_dist <-
-  #   landtype %>%
-  #   terra::distance()
-  # plot(lw_dist)
-
-  # Goal is to get the distance from a water cell to a land cell in each direction, then take the mean of those directions
-
-  library(terra)
-  library(raster)
-  library(mapview)
-
-  #landwater raster with water = 1, land = 0.
-  landtype     <-  terra::rast("path/to/landwater_binary.tif")
-
-  # correct distances I am aiming for
-  correct_dist <-  raster::raster("path/to/correct_distance_raster.tif")
-
-
-  # calculate grid distances
-  landtype_gdist <-
-    landtype %>%
-    terra::gridDistance()
-
-  # view to compare values.
-  landtype_gdist %>%
-    raster::raster() %>%
-    mapview::mapview() + correct_dist
-
-  # calculate grid distances
-  landtype_gdist <-
-    landtype %>%
-    terra::distance()
-
-  plot(lw_gdist)
-  dist_mask <- terra::mask(lw_dist, landtype,  inverse = T)
-  plot(dist_mask)
-
-  tmpf  <- raster::raster("C:/Users/angus/OneDrive/Desktop/lynker/CPRA/data/fetch/raster/fetch_mean_dist_480m_resampled.tif")
-  dist_mask <-
-    lw_dist %>%
-    # terra::crop(terra::rast(tmpf)) %>%
-    terra::mask(land,  inverse = T)
-  plot(dist_mask)
-
-  lw_gdist %>%
-    raster::raster() %>%
-    mapview::mapview() + tmpf
-
-  water_pts <-
-    r %>%
-    get_landwater() %>%
-    get_water_pts()
-
-  land <-
-    r %>%
-    get_landwater() %>%
-    get_land()
-  water <-
-    r %>%
-    get_landwater() %>%
-    get_water(as_polygon = T, as_sf = T)
-
-
-dist(mat, method = "manhattan")
-  # fetch raster
-  fetch <-
-    landtype %>%
-    # terra::distance(water)
-    terra::distance(grid = TRUE)
-
-  flip1 = terra::flip(landtype)
-plot(flip1)
-fetch1  = terra::gridDistance(landtype, target = 0)
-  fetch2  = terra::gridDistance(flip1, target = 0)
-
-  fetch1 = raster::raster(fetch) %>%
-    raster::mask(water, inverse = F)
-  plot(water$geometry)
-fetch2 = raster::raster(fetch2)
-mapview::mapview(fetch1)  + tmpf
-
-
-land_r   <- get_land(landtype, as_polygon = TRUE)
-
-plot(land_r)
-water_r   <- get_water(landtype)
-
-# view map
-landtype %>%
-  raster::raster()%>%
-  mapview::mapview()
-
-plot(land_type$MP2023_S07_G510_C000_U00_V00_SLA_O_12_12_W_lndtyp)
-unique(values(land_type$MP2023_S07_G510_C000_U00_V00_SLA_O_12_12_W_lndtyp))
