@@ -1,31 +1,3 @@
-
-#' Parse model directory
-#' @param dir highest level directory housing all the model folders
-#' @return data.frame
-#' @export
-#' @importFrom stringr str_extract
-#' @importFrom utils tail
-#' @importFrom dplyr group_by mutate ungroup relocate
-# get_fetch = function(dir){
-
-  # file_df <- data.frame(
-  #   model_dir = basename(dir),
-  #   full_path = list.files(dir, full.names = T),
-  #   path      = list.files(dir)
-  # ) %>%
-  #   dplyr::group_by(path) %>%
-  #   dplyr::mutate(
-  #     scenario = stringr::str_extract(path, "(?<=S)[0-9]+"),
-  #     ext      = gsub("\\.", "", stringr::str_extract(path, "\\.[^_]+$")),
-  #     type     = gsub(stringr::str_extract(path, "\\.[^_]+$"), "", tail(unlist(strsplit(path, '_')), 1))
-  #   ) %>%
-  #   dplyr::ungroup() %>%
-  #   dplyr::relocate(scenario, type, ext, model_dir, path, full_path)
-  #
-  # return(file_df)
-
-# }
-
 #' Create HSI grid template
 #' @description returns a template SpatRaster of HSI grid specs. All cell values are 1 so the template raster is not actually "empty"
 #' @return SpatRaster of the HSI grid
@@ -275,6 +247,302 @@ get_water_pts = function(
   return(water_pts)
 
 }
+#' Retrieve length of any diagonal direction for a specific matrix cell
+#' @description Given a matrix and the row and column number for the cell of interest, return the number of consecutive non-zero values
+#' @param m matrix of interest
+#' @param row_index numeric row number of matrix cell to get indices of diagonals for
+#' @param col_index numeric column number of matrix cell to get indices of diagonals for
+#' @param vdirect character indicating vertical direction for diagonal. Either "up" or "down". Default is "down".
+#' @param hdirect character indicating horizontal direction for diagonal. Either "left" or "right". Default is "right".
+#' @param max_count Maximum number of cells within max_dist
+#' @param id_col logical. Whether a column stating the direction of the diagonal should be included. Default is FALSE, no direction column is added.
+#' @param as_matrix logical. Whether a matrix with row/column/cell_count/direction is returned or a numeric vector. Default is FALSE, returns a numeric vector of cell counts
+#' @param verbose logical. Whether messages should output to console. Default is FALSE, no messages output.
+#' @return integer of diagonal cell counts or a matrix with diagonal cell counts
+#' @export
+diag_dist <- function(
+    m,
+    row_index  = NULL,
+    col_index  = NULL,
+    vdirect    = "down",
+    hdirect    = "right",
+    max_count,
+    as_matrix  = FALSE,
+    id_col     = FALSE,
+    verbose    = FALSE
+) {
+
+  # m <- rmat
+  # hdirect = "right"
+  # vdirect = "down"
+
+  # concatenate direction string
+  direction <- paste0(vdirect, "_", hdirect)
+
+  # check if left direction
+  if(grepl("left", hdirect) == TRUE) {
+
+    if(verbose == TRUE) {
+      message(paste0("Sequencing ", hdirect, " diagonals", " - (", direction, ")"))
+    }
+
+    # check if col 1
+    if(col_index == 1) {
+
+      col_start = col_index
+
+    } else {
+
+      col_start = col_index - 1
+
+    }
+
+    # sequence of above columns
+    col_seq <- seq(1, col_start, 1)
+
+
+  } else {    # check if right direction
+
+  # if(grepl("right", hdirect) == TRUE) {
+    if(verbose == TRUE) {
+      message(paste0("Sequencing ", hdirect, " diagonals", " - (", direction, ")"))
+    }
+
+    # check if col 1
+    if(col_index == ncol(m)) {
+
+      col_start = col_index
+
+    } else {
+
+      col_start = col_index + 1
+
+    }
+
+    # sequence of right columns
+    col_seq <- seq(col_start, ncol(m), 1)
+
+  }
+
+  # check if above direction
+  if(grepl("up", vdirect) == TRUE) {
+
+    if(verbose == TRUE) {
+      message(paste0("Sequencing ", vdirect, " diagonals", " - (", direction, ")"))
+    }
+
+    # check if row 1
+    if(row_index == 1) {
+
+      row_start = 1
+
+    } else {
+
+      row_start = row_index - 1
+
+    }
+
+    # sequence of above rows
+    row_seq <- seq(row_start,  1,  -1)
+
+  } else {  # check if bottom direction
+
+  # if(grepl("bottom", vdirect) == TRUE) {
+    if(verbose == TRUE) {
+      message(paste0("Sequencing ", vdirect, " diagonals", " - (", direction, ")"))
+    }
+
+    # check if row 1
+    if(row_index == nrow(m)) {
+
+      row_start = row_index
+
+    } else {
+
+      row_start = row_index + 1
+
+    }
+
+    # sequence of below rows
+    row_seq <- seq(row_start, nrow(m), 1)
+
+  }
+
+  # minimum sequence
+  min_seq <- min(length(col_seq), length(row_seq))
+
+  # top left/north west diagonal
+  if(vdirect == "down" & hdirect == "right") {
+
+      # vector diagonal indices
+      diag_row = row_seq[1:min_seq]
+      diag_col = col_seq[1:min_seq]
+
+  } else if(vdirect == "down" & hdirect == "left"){
+
+      # vector diagonal indices
+      diag_row = row_seq[1:min_seq]
+      diag_col = rev(col_seq)[1:min_seq]
+
+      # # diagonal matrix
+      # diag_mat <-
+      #   matrix( cbind(row_index, col_index, check_length(m[cbind(diag_row, diag_col)]), direction),ncol = 4,
+      #     dimnames = list(c("val"), c("row_idx", "col_idx", "cell_count", "direction")) )
+
+      # diagonal dataframe
+      # diag_df <-data.frame(cell_count = check_length(m[cbind(diag_row, diag_col)]))
+
+  } else if(vdirect == "up" & hdirect == "right"){
+
+      # vector diagonal indices
+      diag_row = row_seq[1:min_seq]
+      diag_col = col_seq[1:min_seq]
+
+  } else if(vdirect == "up" & hdirect == "left"){
+
+      # vector diagonal indices
+      diag_row = row_seq[1:min_seq]
+      diag_col = rev(col_seq)[1:min_seq]
+
+  }
+
+  # if a matrix is requested, with or without ID columns (direction)
+  if(as_matrix == TRUE) {
+
+    # add an ID column stating the direction of the diagonal
+    if(id_col == TRUE) {
+
+        # diagonal matrix
+        diag_mat <-
+          matrix(
+            cbind(
+              row_index,
+              col_index,
+              check_length(
+                vect      = m[cbind(diag_row, diag_col)],
+                max_count = max_count
+                ),
+              direction
+            ),
+            ncol     = 4,
+            dimnames = list(c("r"), c("row", "col", "cell_count", "direction"))
+          )
+      } else {
+
+        # diagonal matrix w/o row & column data
+        diag_mat <-
+          matrix(
+            cbind(
+              row_index,
+              col_index,
+              check_length(
+                vect      = m[cbind(diag_row, diag_col)],
+                max_count = max_count
+              ),
+            ),
+            ncol = 3,
+            dimnames = list(c("r"), c("row", "col", "cell_count"))
+          )
+      }
+
+    return(diag_mat)
+
+  } else {   # Default returns an integer with the total diagonal cell count
+
+    # get count of diagonal vector
+    diag_count <- check_length(
+                      vect      = m[cbind(diag_row, diag_col)],
+                      max_count = max_count
+                    )
+
+    return(diag_count)
+
+  }
+
+}
+
+diag_summary <- function(
+    m,
+    indices_df,
+    func    = "mean",
+    max_count,
+    as_df   = FALSE,
+    verbose = FALSE
+    ) {
+
+  # get function
+  func <- match.fun(func)
+
+  # diagonal directions
+  diag_dirs <- expand.grid(
+    vdir             = c("up", "down"),
+    hdir             = c("left", "right"),
+    stringsAsFactors = F
+  )
+
+  #indices list
+  diags <- lapply(1:nrow(indices_df), function(n) {
+
+      if(verbose == TRUE) {
+        message(paste0(n, "/", nrow(indices_df)))
+      }
+
+      diags <- sapply(1:nrow(diag_dirs), function(y) {
+
+        diag_dist(
+          m          = m,
+          row_index  = indices_df$row[n],
+          col_index  = indices_df$col[n],
+          vdirect    = diag_dirs[y, 1],
+          hdirect    = diag_dirs[y, 2],
+          max_count  = max_count,
+          as_matrix  = FALSE,
+          id_col     = F,
+          verbose    = F
+        )
+      }) %>%
+        func(na.rm = T)
+      # data.frame(
+      # row        = idx$row[n],
+      # col        = idx$col[n],
+      # cell_count = .,
+      # direction  = c("up_left", "down_left", "up_right", "down_right")
+      # )
+
+    })
+  return(diags)
+}
+
+side_summary <- function(
+    m,
+    indices_df,
+    func    = "mean",
+    as_df   = FALSE,
+    verbose = FALSE
+) {
+
+  # indices_df <- idx
+  # func    = "sum"
+  # m <- rmat
+# z <- 658
+  # side counts/lengths directions
+  side_lengths <- lapply(1:nrow(indices_df), function(z) {
+      if(verbose == TRUE) {
+        message(paste0(z, "/", nrow(indices_df)))
+      }
+
+      side_count(
+        m         = m,
+        row_index = indices_df$row[z],
+        col_index = indices_df$col[z],
+        func      = func,
+        verbose   = verbose
+      )
+
+    })
+
+    return(side_lengths)
+}
 #' Retrieve indices of diagonal cells from a specific matrix cell in a direction
 #' @description Given a matrix and the row and column number for the cell of interest, return the index values for the diagonal cells in any direction.
 #' @param m matrix of interest
@@ -304,7 +572,8 @@ index_diag <- function(
 
     if(verbose == TRUE) {
       message(paste0("Retrieving top left diaganol indices..."))
-      }
+    }
+
     # check if row 1
     if(row_index == 1) {
 
@@ -433,7 +702,38 @@ index_diag <- function(
     min_seq <- min(length(col_seq), length(row_seq))
 
     # indices of diaganols
-    diag_df <- data.frame(
+    # diag_df <-
+    #   data.frame(
+    #     diag_row = row_seq[1:min_seq],
+    #     diag_col = rev(col_seq)[1:min_seq]
+    #     )
+    # c(row_seq[1:min_seq],  rev(col_seq)[1:min_seq])
+    # M = matrix(rnorm(100),nrow=10,ncol=10)
+    # set.seed(123)
+    # row_index = sample(10) # 3  8  4  7  6  1 10  9  2  5
+    # column_index = sample(10)
+    # M
+    # cbind(row_index, column_index)
+    # M[cbind(row_index, column_index)]
+    #
+    diag_row = row_seq[1:min_seq]
+    diag_col = rev(col_seq)[1:min_seq]
+
+    # mvect  <- m[cbind(diag_row, diag_col)]
+
+    check_length(m[cbind(diag_row, diag_col)])
+
+    # idx_mat <-
+      matrix(
+        data = c(row_seq[1:min_seq],  rev(col_seq)[1:min_seq]),
+        nrow = min_seq,
+        ncol = 2
+        )
+    idx_mat
+
+    m
+    # diag_df <-
+      data.frame(
       diag_row = row_seq[1:min_seq],
       diag_col = rev(col_seq)[1:min_seq]
     )
@@ -509,7 +809,9 @@ index_diag <- function(
 count_diag_dir <- function(
     m,
     diag_indices,
-    verbose = FALSE
+    cell_res   = 480,
+    max_dist   = 20000,
+    verbose    = FALSE
     ) {
 
   # split diaganols into groups
@@ -526,6 +828,8 @@ count_diag_dir <- function(
       m            = m,
       diag_indices = diag_lst[[x]],
       as_df        = TRUE,
+      cell_res     = cell_res,
+      max_dist     = max_dist,
       verbose      = verbose
     ) %>%
       dplyr::mutate(
@@ -543,6 +847,8 @@ count_diag_dir <- function(
 #' @param m matrix to count diagnols
 #' @param diag_indices dataframe with the indices of matrix diagnols from a reference cell
 #' @param stop_value numeric value to stop counting cells if encountered. Default is 0
+#' @param cell_res numeric cell resolution
+#' @param max_dist maximum distance to calculate fetch to
 #' @param as_df logical, whether return a dataframe or a single count vector. Default is TRUE, returns a dataframe
 #' @param verbose logical, whether to print loop messages or not. Default is TRUE
 #'
@@ -552,41 +858,73 @@ count_diag_dir <- function(
 #' @examples
 count_diag <- function(
     m,
-    diag_indices,
+    # diag_indices,
+    row_vect,
+    col_vect,
     stop_value = 0,
+    cell_res   = 480,
+    max_dist   = 20000,
     as_df      = TRUE,
     verbose    = TRUE
     ) {
   # m <- lw_mat
+  # diag_indices <- indices_df[[61]]
+  # diag_indices <- indices_df[[2]]
   # diag_indices <- row_nest$indices[[1]]
-  # row_nest$data[[1]]
-  # rm(counter, diag_df, cell_val, count_lst, n, k)
+  # diag_indices <- row_nest$indices[[80]]
+  # diag_indices <- row_nest$indices[[81]]
 
+  # max count distance
+  # max_count <- floor(max_dist/(cell_res*sqrt(2)))
+  max_count <- floor(max_dist/(cell_res))
+
+  # m[diag_indices$diag_row, diag_indices$diag_col]
+  # m[ diag_indices$row-1, diag_indices$col]
+  # m[(diag_indices$row[1]+1):ncol(m), 1:(diag_indices$col[1]-1)]
+
+  # vectorize row/col indices
+  # row_vect <- diag_indices$diag_row
+  # col_vect <- diag_indices$diag_col
+
+  # start counter
   counter <- 1
 
-  # loop through diagnols and add to cell counter until a 0 is reached
-  for (k in 1:nrow(diag_indices)) {
+  # loop through diagonal cells until max_count is reached or a 0 is found
+  while (counter <= max_count) {
 
-    if(verbose == TRUE) {
+      # value of nth cell
+      cell_val <- m[row_vect[counter], col_vect[counter]]
 
-      message(paste0("K: ", k, " (r", diag_indices$diag_row[k], ", c", diag_indices$diag_col[k], ")"))
+      # if cell value is 0, stop loop
+      if (cell_val == stop_value | is.na(cell_val)) {
 
-    }
+        if(verbose == TRUE) {
+          message(paste0("--- Stopping diagonal cell count --- "))
+          message(paste0("--- ", stop_value, " or end of matrix reached ---"))
+        }
 
-    # value of kth southwest cell
-    cell_val <- m[diag_indices$diag_row[k], diag_indices$diag_col[k]]
+        break
 
-    # if cell value is 0, stop loop
-    if (cell_val == stop_value | is.na(cell_val)) {
+      # Last iteration message
+      } else if(counter >= max_count) {
 
-      if(verbose == TRUE) {
-        message(paste0(stop_value, " detected, stopping counter"))
+        message(paste0("--- Max cell count reached: ", max_count, " ---"))
+
+      # print message until last iteration
+      } else if(counter < max_count) {
+
+        message(paste0("Diagonal: ", counter, " --- (row ", row_vect[counter], ", col ", col_vect[counter], ")"))
+
       }
 
-      break
-    }
+    counter <-  counter + 1
 
-    counter <- counter + 1
+  }
+
+  # remove last loop count
+  if (counter >= 1) {
+
+    counter <- counter - 1
 
   }
 
@@ -599,12 +937,263 @@ count_diag <- function(
 
     # simple dataframe with count value
     counter_df <- data.frame(
-                      cell_count = counter
-                    )
+      cell_count = counter
+    )
 
     return(counter_df)
 
+  }
+
+  # # loop through diagnols and add to cell counter until a 0 is reached
+  # for (k in 1:nrow(diag_indices)) {
+  #
+  #   if(verbose == TRUE) {
+  #
+  #     message(paste0("Iteration: ", k, " - (row ", diag_indices$diag_row[k], ", col ", diag_indices$diag_col[k], ")"))
+  #
+  #   }
+  #
+  #   # if max number of pixels is reached
+  #   if(counter > max_count) {
+  #
+  #     if(verbose == TRUE) {
+  #       message(paste0("Counter reached max count:"))
+  #       message(paste0("Max count: ", max_count))
+  #       message(paste0("Counter: ", counter))
+  #     }
+  #
+  #     break
+  #
+  #   }
+  #
+  #   # value of kth southwest cell
+  #   cell_val <- m[diag_indices$diag_row[k], diag_indices$diag_col[k]]
+  #
+  #   # if cell value is 0, stop loop
+  #   if (cell_val == stop_value | is.na(cell_val)) {
+  #
+  #     if(verbose == TRUE) {
+  #       message(paste0(stop_value, " detected, stopping counter"))
+  #     }
+  #
+  #     break
+  #   }
+  #
+  #   counter <- counter + 1
+  #
+  # }
+
+}
+#' Check boundaries of matrix column
+#' @param m matrix of interest
+#' @param row_index numeric row index
+#' @param col_index numeric col index
+#' @return list of cell indexes
+#' @export
+check_cols <- function(m,
+                       row_index,
+                       col_index
+                       ) {
+
+  # check if cells are on the edge of raster
+  if(row_index == nrow(m)) {
+
+    # if bottom row
+    up_cells   <- 1:(row_index-1)
+    down_cells <- (row_index):nrow(m)
+
+  } else if(row_index == 1) {
+
+    # if top row
+    up_cells   <- 1:(row_index)
+    down_cells <- (row_index+1):nrow(m)
+
+  } else {
+
+    # if any other row
+    up_cells   <- 1:(row_index-1)
+    down_cells <- (row_index+1):nrow(m)
+
+  }
+
+  updown <- list(up_cells, down_cells)
+
+  return(updown)
+
+}
+
+#' Check boundaries of matrix row
+#' @param m matrix of interest
+#' @param row_index numeric row index
+#' @param col_index numeric col index
+#' @return list of cell indexes
+#' @export
+check_rows <- function(m,
+                       row_index,
+                       col_index
+) {
+
+  # check if cells are on the edge of raster
+  if(col_index == ncol(m)) {
+
+    # if right most col
+    left_cells  <- 1:(col_index-1)
+    right_cells <- (col_index):ncol(m)
+
+  } else if(col_index == 1) {
+
+    # if left most col
+    left_cells  <- 1:(col_index)
+    right_cells <- (col_index+1):ncol(m)
+
+  } else {
+
+    # all other cols
+    left_cells  <- 1:(col_index-1)
+    right_cells <- (col_index+1):ncol(m)
+
+  }
+
+  leftright <- list(left_cells, right_cells)
+
+  return(leftright)
+
+}
+#' Check length of consecutive non-zero cells in vector
+#' @param vect numeric vecto of 1s and 0s
+#' @param verbose logical, whether messages should be printed. Default is FALSE, no messages print.
+#' @return Count of consecutive non-zero cells from a matrix cell, extending out in a given direction
+#' @export
+check_length <- function(
+    vect,
+    max_count,
+    verbose = FALSE
+) {
+  # vect <- c(1, 1, 0, 0, 1, NA, 0, NA)
+  # vect <- vect3
+  # vect <- c(1, 1, 0, 0, 1, 0)
+  # vect <- c(1, 1, NA, 0, 1, NA, 0, NA)
+  # vect3 <- vect
+  # vect <- c(NA, NA, NA, 3, 0)
+
+  # replace NA values w/ 2
+  vect[is.na(vect)] <- 2
+
+
+  # first check if first cell is an NA
+  if(vect[1] == 2) {
+
+    # make count index of first zero minus 1
+    # count <- length(vect[vect == 2])
+    count <- NA
+
+    # rest of side length logic
+  } else {
+
+    # if first cell is a 0, give count of 0
+    if(vect[1] == 0) {
+
+      count <- 0
+
+      if(verbose == TRUE) {
+
+        message(paste0("Cell count: ", count))
+
+      }
+
+    } else {
+
+        # check for NAs
+        na_check <- which(vect == 2)[1]
+
+        # index of first 0 minus 1 gives number of cells before a 0 occurs
+        check <- which(vect == 0)[1]
+
+        # check to make sure there is an NA in vector
+        if(is.na(na_check)) {
+
+          # if no zero is encountered, make count length of the vector
+          if(is.na(check)) {
+
+              count <- length(vect)
+
+          } else { # if zero is encountered
+
+              # make count index of first zero minus 1
+              count <- check - 1
+          }
+
+        } else {
+
+          # if no zero is encountered, make count length of the vector
+          if(is.na(check)) {
+
+              count <- NA
+
+          } else {
+
+              count <- check - 1
+
+          }
+
+      }
     }
+  }
+
+    #   # check to make sure there is an NA in vector
+    #   if(!is.na(na_check)) {
+    #
+    #     # if no zero is encountered, make count length of the vector
+    #     if(is.na(check)) {
+    #
+    #       count <- length(vect)
+    #
+    #     } else { # if zero is encountered
+    #
+    #       # check that 0 occurs BEFORE any NA values
+    #       if(check < na_check) {
+    #
+    #         # make count index of first zero minus 1
+    #         count <- check - 1
+    #
+    #       } else {
+    #
+    #         # make count index of first zero minus 1
+    #         count <- length(vect[vect == 2])
+    #
+    #       }
+    #
+    #     }
+    #
+    #   } else {
+    #
+    #     # if no zero is encountered, make count length of the vector
+    #     if(is.na(check)) {
+    #
+    #       count <- length(vect)
+    #
+    #     } else {
+    #
+    #       # make count index of first zero minus 1
+    #       count <- check - 1
+    #
+    #     }
+    #
+    #   }
+    #
+    # }
+
+  # }
+    # convert to integer
+    count <- as.integer(count)
+
+    if(verbose == TRUE) {
+      message(paste0("Cell count: ", count))
+    }
+
+
+
+  return(count)
 
 }
 
@@ -614,15 +1203,18 @@ count_diag <- function(
 #' @return Count of consecutive non-zero cells from a matrix cell, extending out in a given direction
 #' @export
 check_zeros <- function(rle_vect, verbose = FALSE) {
-  # rle_vect <- right_rle
-  # right_rle$values
+
+  # rle_vect <- down_rle
+  # rev(vcol[up_cells])
+  # vcol[down_cells]
+
   # check if any zeros occur after calculating RLE on a vector
   if(0 %in% unique(rle_vect$values)) {
 
     if(verbose == TRUE) {
       message(paste0("Calculating consecutive non-zero cell count..."))
     }
-    # rle_vect$lengths[(which(is.na(rle_vect$values))[1]) - 1]
+
     # count of up/down cells before a 0
     count   <- rle_vect$lengths[(which(rle_vect$values == 0)[1]) - 1]
 
@@ -646,103 +1238,258 @@ check_zeros <- function(rle_vect, verbose = FALSE) {
 #' @param m matrix of interest
 #' @param row_index numeric row number of matrix cell to calculate cell count going up/down/left/right of the specified cell
 #' @param col_index numeric column number of matrix cell to calculate cell count going up/down/left/right of the specified cell
+#' @param cell_res numeric cell resolution
+#' @param max_dist maximum distance to calculate fetch to
+#' @param func character. R function, either, mean, min, max, or sum. Default is mean calculates mean number of cells around cell
+#' @param as_df logical. whether to return a dataframe or not. Default is FALSE, returns numeric vector of mean cell count around cell.
 #' @param wide logical, whether dataframe should be returned in wide or long format. Default is FALSE, returns long dataframe column number of matrix cell to calculate cell count to left/right
+#' @param verbose logical, whether to print messages to console. Default is FALSE, no messages print
 #'
-#' @return dataframe with consequetive cell counts (non-zero cells) up/down/left/right of the specified cell in a matrix
+#' @return numeric indicating the average cell count in all directions or a dataframe with consequetive cell counts (non-zero cells) up/down/left/right of the specified cell in a matrix
 #' @export
 side_count <- function(
     m,
     row_index = NULL,
     col_index = NULL,
-    wide      = FALSE
+    cell_res  = 480,
+    max_dist  = 20000,
+    # avg_count = TRUE,
+    func      = "mean",
+    as_df     = FALSE,
+    wide      = FALSE,
+    verbose   = FALSE
 ) {
+  # avg_count logical. Whether the average number of cells should be returned or cell counts in each direction. Default is TRUE, returns mean cell count around cell.
+  # m         = rmat
+  # row_index = row_nest$data[[11]]$row
+  # col_index = row_nest$data[[11]]$col
+  # wide      = FALSE
+  # verbose   = T
+  # row_nest
   # m         = m
   # row_index = row_nest$data[[4]]$row
   # col_index = row_nest$data[[4]]$col
   # wide      = FALSE
 
+  # get function
+  func <- match.fun(func)
+
+  # max count distance
+  max_count <- floor(max_dist/cell_res)
+
   # ---- col (up/down) ----
   # vector of current matrix col
   vcol <- m[, col_index]
 
-  # cells to the up/down of occurrence of water cell
-  up_cells   <- 1:row_index
-  down_cells <- row_index:nrow(m)
-
-  # run length encoding of up/down cells
-  up_rle    <- rle(rev(vcol[up_cells]))
-  down_rle  <- rle(vcol[down_cells])
+  # return index list c(up, down) indices, checks if cells are on the edge of raster
+  updown <- check_cols(
+    m         = m,
+    row_index = row_index,
+    col_index = col_index
+    )
 
   # count of up/down cells before a 0, if no zeros occur, returns length of consecutive 1s
-  up_count   <- check_zeros(rle_vect = up_rle)
-  down_count <- check_zeros(rle_vect = down_rle)
+  up_count   <- check_length(
+    vect      = rev(vcol[updown[[1]]]),
+    max_count = max_count
+    )
+
+  down_count <- check_length(
+    vect      = vcol[updown[[2]]],
+    max_count = max_count
+    )
 
   # ---- row (left/right) ----
   # vector of current matrix row
   vrow <- m[row_index, ]
 
-  # cells to the left/right of occurrence of water cell
-  left_cells  <- 1:col_index
-  right_cells <- col_index:ncol(m)
+  # return index list c(left, right) indices, checks if cells are on the edge of raster
+  leftright <- check_rows(
+    m         = m,
+    row_index = row_index,
+    col_index = col_index
+  )
 
-  # run length encoding of left/right cells
-  left_rle   <- rle(rev(vrow[left_cells]))
-  right_rle  <- rle(vrow[right_cells])
-
-  # count of left/right  cells before a 0, if no zeros occur, returns length of consecutive 1s
-  left_count   <- check_zeros(rle_vect = left_rle)
-  right_count  <- check_zeros(rle_vect = right_rle)
-
-  # count of cells on right and left side of cell before a 0 occurs
-  side_df <-
-    data.frame(
-      row   = row_index,
-      col   = col_index,
-      up    = up_count,
-      down  = down_count,
-      left  = left_count,
-      right = right_count
+  # count of up/down cells before a 0, if no zeros occur, returns length of consecutive 1s
+  left_count  <- check_length(
+    vect      = rev(vrow[ leftright[[1]]]),
+    max_count = max_count
     )
+  right_count <- check_length(
+    vect      = vrow[leftright[[2]]],
+    max_count = max_count
+    )
+  # check_length(
+  #   vect      = c(1, 1, 1, NA, 0, NA, 0, 0, 0 , 0, NA, NA),
+  #   # vect      = c(1, 1, 0, 0, 1, NA, 0, NA),
+  #   max_count = max_count
+  # )
 
+  # count of cells on up/down/left/right side of cell before a 0 occurs
+  side_df <- data.frame(
+    row         = row_index,
+    col         = col_index,
+    direction   = c("up", "down", "left", "right"),
+    cell_count  = c(up_count, down_count, left_count, right_count)
+    # cell_count  = c(55, 3, 2, 98)
+  ) %>%
+    na.omit()
 
+  # if any cell counts are above max count distance, convert to max count
+  if(length(which(side_df$cell_count > max_count)) != 0) {
 
-  # if wide data requested
-  if(wide == TRUE) {
+    if(verbose == TRUE) {
+      message(paste0("updating cell counts to max: ", max_count))
+    }
 
-    return(side_df)
+    side_df[side_df$cell_count > max_count, ]$cell_count <- max_count
+
+  }
+
+  # return average cell count around cell
+  if(as_df == FALSE) {
+
+    # calculate average in all directions
+   fcell_count <-  func(side_df$cell_count, na.rm = T)
+
+   return(fcell_count)
 
   } else {
 
-    # pivot to long format data
-    side_df <-
-      side_df %>%
-      tidyr::pivot_longer(
-        cols      = c(up, down, left, right),
-        names_to  = "direction",
-        values_to = "cell_count"
-      ) %>%
-      dplyr::select(cell_count, direction)
+    # if wide data requested
+    if(wide == TRUE) {
 
-    return(side_df)
+      # count of cells on right and left side of cell before a 0 occurs
+      side_df <-
+        side_df %>%
+        tidyr::pivot_wider(
+          names_from  = direction,
+          values_from = cell_count
+        )
 
+      return(side_df)
+
+    } else {
+
+      # select relevant columns
+      side_df <-
+        side_df %>%
+        dplyr::select(cell_count, direction)
+
+      return(side_df)
+      }
   }
 
 }
 
-dist_summary <- function(m,
-                         indices_df) {
-  # m = rmat
-  # indices_df = idx[[i]]  # diaganol direction to map over
+  # run length encoding of up/down cells
+  # up_rle    <- rle(rev(vcol[up_cells]))
+  # down_rle  <- rle(vcol[down_cells])
+  #
+  # # count of up/down cells before a 0, if no zeros occur, returns length of consecutive 1s
+  # up_count   <- check_zeros(rle_vect = up_rle)
+  # down_count <- check_zeros(rle_vect = down_rle)
 
+  # left_cells  <- 1:col_index
+  # right_cells <- col_index:ncol(m)
+
+  # count of up/down cells before a 0, if no zeros occur, returns length of consecutive 1s
+  # left_count  <- check_length(vect = rev(vrow[left_cells]))
+  # right_count <- check_length(vect = vrow[right_cells])
+
+  # # run length encoding of left/right cells
+  # left_rle   <- rle(rev(vrow[left_cells]))
+  # right_rle  <- rle(vrow[right_cells])
+  #
+  # # count of left/right  cells before a 0, if no zeros occur, returns length of consecutive 1s
+  # left_count   <- check_zeros(rle_vect = left_rle)
+  # right_count  <- check_zeros(rle_vect = right_rle)
+
+  # count of cells on right and left side of cell before a 0 occurs
+  # side_df <-
+  #   data.frame(
+  #     row   = row_index,
+  #     col   = col_index,
+  #     up    = up_count,
+  #     down  = down_count,
+  #     left  = left_count,
+  #     right = right_count
+  #   )
+
+# }
+
+#' Calculate distances by cell counts
+#'
+#' @param indices_df dataframe of indices
+#' @param cell_res numeric cell resolution
+#' @param max_dist numeric max distance
+#' @param func character R function. Either mean, min, max, or sum
+#' @param na_remove logical. arguement passed to na.rm = in R func. Default is TRUE, remove NAs
+#' @param verbose logical, print messages. Default is FALSE
+#'
+#' @return
+#' @export
+cell_dist <- function(
+    indices_df,
+    cell_res  = 480,
+    max_dist  = 20000,
+    func      = "mean",
+    na_remove = TRUE,
+    verbose   = FALSE
+    ) {
+
+  # match function to R function
+  func <- match.fun(func)
+
+  # calculate distance from cell counts
+  cell_distance <-
+    indices_df %>%
+    dplyr::group_by(row, col) %>%
+    dplyr::summarise(cell_count = func(cell_count, na.rm = na_remove)) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(
+      cell_res       = cell_res,
+      # distance       = cell_count*cell_res
+      distance       = dplyr::case_when(
+        cell_count*cell_res > max_dist ~ max_dist,
+        TRUE                           ~ cell_count*cell_res
+      )
+    )
+
+  return(cell_distance)
+
+}
+
+
+dist_summary <- function(
+    m,
+    indices_df,
+    cell_res  = 480,
+    max_dist  = 20000,
+    verbose   = FALSE
+) {
+
+# verbose = T
+  # m = rmat
+  # lw_crop
+  # #
+  # indices_df = idx2[[1]]  # diaganol direction to map over
+  # row_nest$data[[33]]$row
+  # row_nest$data[[33]]$col
+  # side_count(
+  #   m         = m,
+  #   row_index = row_nest$data[[33]]$row,
+  #   col_index = row_nest$data[[33]]$col,
+  #   cell_res  = cell_res,
+  #   max_dist  = max_dist,
+  #   wide      = FALSE,
+  #   verbose   = verbose
+  # )
+  # diagonal directions
   diag_dirs <- c("top_left", "top_right", "bottom_left", "bottom_right")
-# row_nest$data[[4]]$row
-# row_nest$data[[4]]$col
-# side_count(
-#   m         = m,
-#   row_index = row_nest$data[[4]]$row,
-#   col_index = row_nest$data[[4]]$col,
-#   wide      = FALSE
-# )
+  #
+  # row_nest$indices[[1]]
+  # m
   # nest and map over each row and get the indices of the diagonals
   row_nest <-
     indices_df %>%
@@ -756,7 +1503,10 @@ dist_summary <- function(m,
           m         = m,
           row_index = .x$row,
           col_index = .x$col,
-          wide      = FALSE
+          cell_res  = cell_res,
+          max_dist  = max_dist,
+          wide      = FALSE,
+          verbose   = verbose
         )
       ),
       indices = purrr::map(
@@ -768,7 +1518,7 @@ dist_summary <- function(m,
             col_index = .x$col,
             direction = diag_dirs[y],
             id_col    = TRUE,
-            verbose   = FALSE
+            verbose   = verbose
           )
         }) %>%
           dplyr::bind_rows()
@@ -778,7 +1528,9 @@ dist_summary <- function(m,
         .f = ~count_diag_dir(
           m            = m,
           diag_indices = .x,
-          verbose      = FALSE
+          cell_res     = cell_res,
+          max_dist     = max_dist,
+          verbose      = verbose
         )
       )
     )
@@ -795,12 +1547,16 @@ dist_summary <- function(m,
       )
     ) %>%
     dplyr::mutate(
-      # convert_factor = 480,
-      convert_factor = dplyr::case_when(
-        grepl("_", direction) ~ 678.8225,
-        TRUE                  ~ 480
-      ),
-      distance = cell_count*convert_factor
+      convert_factor = cell_res,
+      # convert_factor = dplyr::case_when(
+      #   grepl("_", direction) ~ cell_res*sqrt(2),
+      #   TRUE                  ~ cell_res
+      # ),
+      # distance = cell_count*convert_factor
+      distance = dplyr::case_when(
+        cell_count*convert_factor > max_dist ~ max_dist,
+        TRUE                                 ~ cell_count*convert_factor
+      )
     ) %>%
     dplyr::group_by(row_id, row, col) %>%
     dplyr::summarise(
@@ -812,52 +1568,7 @@ dist_summary <- function(m,
   return(row_dist)
 
 }
-library(sf)
-library(doParallel)
-library(parallel)
-library(foreach)
-library(dplyr)
 
-library(tidyverse)
-library(sf)
-library(terra)
-library(raster)
-
-source("R/parse_directory.R")
-# hsi grid for resampling
-# hsi_grid <- terra::rast("data/hsi_grid.tif")
-base_folder = "D:/cpra"
-
-# model directories
-model_dirs     <- parse_directory(base_folder = base_folder)
-
-# landtype files
-landtype_files <- parse_files(dir = model_dirs$path[1]) %>%
-  dplyr::filter(type == "lndtyp")
-# r <- landtype_files$full_path[1]
-
-# tmpf  <- raster::raster("C:/Users/angus/OneDrive/Desktop/lynker/CPRA/data/fetch/raster/fetch_mean_dist_480m_resampled.tif")
-r_path = landtype_files$full_path[1]
-
-fetch_r <- get_fetch(r_path = r_path, ncores = 12)
-landtype <- get_landwater(r_path = landtype_files$full_path[1])
-
-pt_buffer <- data.frame(
-  lng = 730390,
-  lat = 3240040
-) %>%
-  sf::st_as_sf(coords = c("lng", "lat"), crs = 26915) %>%
-  sf::st_buffer(2000) %>%
-  sf::st_bbox() %>%
-  sf::st_as_sfc() %>%
-  terra::vect()
-
-lw_crop <-
-  landtype %>%
-  terra::crop(pt_buffer) %>%
-  terra::mask(pt_buffer)
-
-plot(lw_crop)
 
 # *****************************************************************************
 # *****************************************************************************
@@ -866,6 +1577,7 @@ plot(lw_crop)
 #' @description returns a dataframe with fetch lengths for a coastal area
 #' @param r_path Path to binary land type raster TIF. Land and water values only.
 #' @param r Path to binary land type raster TIF. Land and water values only.
+#' @param max_dist numeric maximum distance (meters) to calculate fetch values out to. Default is 20000m (20km)
 #' @param ncores numeric indicating how many cores to use during parallel processing
 #' @return SpatVector representing mean wind fetch distance
 #' @importFrom dplyr arrange group_by group_split mutate select bind_rows n summarise case_when ungroup
@@ -877,9 +1589,11 @@ plot(lw_crop)
 #' @importFrom terra as.matrix rast crs ext
 #' @export
 get_fetch = function(
-    r_path = NULL,
-    r      = NULL,
-    ncores = 10
+    r_path    = NULL,
+    r         = NULL,
+    max_dist  = 20000,
+    ncores    = 10,
+    verbose   = TRUE
 ) {
   # error if no path or raster are given
   if(is.null(r_path) & is.null(r)) {
@@ -887,6 +1601,11 @@ get_fetch = function(
     stop(paste0("Please enter a path to a binary landwater raster or a SpatRaster object"))
 
   }
+
+  if(verbose == TRUE) {
+    message(paste0("Calculating Fetch..."))
+  }
+
   # r_path = landtype_files$full_path[1]
   # if no path to raster is given, read it in
   if(!is.null(r_path)) {
@@ -894,28 +1613,60 @@ get_fetch = function(
     r <- get_landwater(r_path = r_path)
 
   }
+  # plot(r)
+    # replace NA raster values w/ 0 for calcs
+    # r <-  terra::classify(r, cbind(NA, 0))
 
-  # replace NA raster values w/ 0 for calcs
-  r <- terra::classify(r, cbind(NA, 0))
-  # r %>%
-  #   raster::raster() %>%
-  #   mapview::mapview()
+    # r <-  terra::classify(r, cbind(NA, 1))
+    # cell resolution for distance calcs
+    cell_res <- terra::res(r)[1]
 
+    # max count distance
+    max_count <- floor(max_dist/(cell_res))
+    # max_count <- floor(max_dist/(cell_res*sqrt(2)))
+
+  # You can fill in the NA values using the focal function with the na.rm argument set to FALSE and pad to TRUE.
+
+  # fill  NA values in a raster
+  # na_fill <- function(x, i=5) {
+  #   if( is.na(x)[i] ) {
+  #     return( round(mean(x, na.rm=TRUE),0) )
+  #   } else {
+  #     return( round(x[i],0) )
+  #   }
+  # }
+
+  # mapview::mapview(pts) + lw_r
   # pt_buffer <- data.frame(
-  #   lng = 730390,
-  #   lat = 3240040
+  #   # lng = 625390,
+  #   # lat = 3255040
+  #   lng = 625390,
+  #   lat = 3275040
+  #   # lng = 730390,
+  #   # lat = 3240040
   # ) %>%
   #   sf::st_as_sf(coords = c("lng", "lat"), crs = 26915) %>%
-  #   sf::st_buffer(25000) %>%
+  #   # sf::st_buffer(30000) %>%
+  #   sf::st_buffer(65000) %>%
   #   sf::st_bbox() %>%
-  #   sf::st_as_sfc() %>%
-  #   terra::vect()
+  #   sf::st_as_sfc()
+  # # %>%
+  #   # terra::vect()
   #
+  # mapview::mapview(pt_buffer)
   # lw_crop <-
   #   r %>%
-  #   terra::crop(pt_buffer) %>%
-  #   terra::mask(pt_buffer)
+  #   terra::crop( terra::vect(pt_buffer)) %>%
+  #   terra::mask( terra::vect(pt_buffer))
+  #   # terra::crop(pt_buffer) %>%
+  #   # terra::mask(pt_buffer)
+  # lw_crop
   # plot(lw_crop)
+  # r2 <- raster::focal( raster::raster(r),  w      = matrix(1,5,5),  fun    = na_fill, pad    = T, na.rm  = F, NAonly = T )
+
+  # lw_crop <-  terra::classify(lw_crop, cbind(NA, 1))
+  # plot(lw_crop)
+  # lw_focal <- terra::focal(r, 297, "max", na.policy="only", na.rm=TRUE)
 
   # make landwater raster a wide matrix
   rmat <- terra::as.matrix(r, wide = TRUE)
@@ -925,67 +1676,322 @@ get_fetch = function(
   idx <-
     which(rmat == 1, arr.ind = T) %>%
     as.data.frame() %>%
-    dplyr::arrange(row) %>%
-    dplyr::group_by(row) %>%
-    dplyr::group_split()
-# i <- 1
+    dplyr::arrange(row)
 
-  message(paste0("Calculating fetch distances..."))
-  # ncores = 12
-  cl    <- parallel::makeCluster(ncores) #not to overload your computer
-
-  # register parallel backend
-  doParallel::registerDoParallel(cl)
-
-  # run a loop using a parallel backend. ~2x faster
-  fetch_loop <- foreach::foreach(i = 1:length(idx),
-                                 .combine  = "rbind",
-                                 .export   = c('side_count', 'index_diag', 'count_diag_dir', 'count_diag' ,'dist_summary', 'check_zeros'),
-                                 .packages = c("dplyr", "tidyr", "purrr")) %dopar% {
-
-                                  row_dist <- dist_summary(m = rmat, indices_df = idx[[i]])
-                                  row_dist
-
-                                 }
-
-  # stop extra workers
-  doParallel::stopImplicitCluster()
-  parallel::stopCluster(cl)
-
-  row_lst <- list()
-  for (i in 1:length(idx)) {
-
-    message(paste0("Index: ", i, "/", length(indx)))
-    row_dist <- dist_summary(m = rmat, indices_df = idx[[i]])
-
-    row_lst[[i]] <- row_dist
-
+  # verbose = T
+  if(verbose == TRUE) {
+    message(paste0("Calculating North/South/East/West distances"))
   }
-  rmat2 <- rmat
-  # loop over each row in dataframe and replace old water matrix values with mean fetch distances
-  for (j in 1:nrow(fetch_loop)) {
+  # system.time(
 
-    message(paste0("Row: ", fetch_loop$row[j], " col: ", fetch_loop$col[j]))
-    rmat2[fetch_loop$row[j], fetch_loop$col[j]]  <- fetch_loop$distance[j]
+  # side cell totals list
+  side_lst <- side_summary(
+    m          = rmat,
+    indices_df = idx,
+    func       = "mean",
+    verbose    = FALSE
+  )
 
+  # )
+
+  if(verbose == TRUE) {
+    message(paste0("Calculating diagonal distances"))
   }
 
-  # replace 0 values (land) with NA
-  rmat2[which(rmat2 == 0)] <- NA
 
-  # create fetch raster from matrix
-  fetch_r <-
-    terra::rast(
-      rmat2,
-      crs    = terra::crs(r),
-      extent = terra::ext(r)
+  # system.time(
+
+  # diagonal totals list
+  diag_lst <- diag_summary(
+      m          = rmat,
+      indices_df = idx,
+      func       = "mean",
+      max_count  = max_count,
+      verbose    = FALSE
     )
 
-  plot(fetch_r)
-  return(fetch_r)
+  # )
 
+  # add mean diagonal cell counts
+  idx$diag_cell_count <- unlist(diag_lst)
+
+  # add mean diagonal cell counts
+  idx$side_cell_count <- unlist(side_lst)
+
+  # pivot data to long w/ single column for cell counts
+  idx <-
+    idx %>%
+    tidyr::pivot_longer(
+      cols      = c(diag_cell_count, side_cell_count),
+      names_to  = "direction",
+      values_to = "cell_count"
+      )
+
+  # calcualte cell distances from cell counts
+  dist_mat <- cell_dist(
+    indices_df = idx,
+    cell_res   = cell_res,
+    max_dist   = max_dist,
+    func       = "mean",
+    na_remove  = TRUE
+  )
+
+  # create fetch raster from gridded matrix
+  fetch_r <-
+    terra::rast(
+      x = matrix(
+        data = dplyr::arrange(
+          dplyr::left_join(
+            expand.grid(
+              row = 1:terra::nrow(r),
+              col = 1:terra::ncol(r)
+              # row = 1:terra::nrow(lw_crop),
+              # col = 1:terra::ncol(lw_crop)
+            ),
+            dplyr::select(dist_mat, row, col, distance),
+            by = c("row", "col")
+          ),
+          row
+        )$distance,
+        nrow  = terra::nrow(r),
+        ncol  = terra::ncol(r),
+        # nrow  = terra::nrow(lw_crop),
+        # ncol  = terra::ncol(lw_crop),
+        byrow = TRUE
+      ),
+      crs    = terra::crs(r),
+      extent = terra::ext(r)
+      # crs    = terra::crs(lw_crop),
+      # extent = terra::ext(lw_crop)
+    )
+
+  return(fetch_r)
+  # plot(fetch_r)
+  # plot(fetch_r2)
+#   plot(fetch_r3)
+#
+#   # Reclassify fetch values
+#   fetch_mat_shallow <- matrix(
+#     c(0, 1000, 1,
+#       1000, 5000, .5,
+#       5000, 20001, .2),
+#     ncol=3,
+#     byrow = T
+#   )
+#
+#
+#   # Reclassify fetch values for deep water
+#   fetch_mat_deep <- matrix(
+#     c(0,     5000,   1,          # deep water fetch bins
+#       5000,  10000, .5,
+#       10000, 20001, .2),
+#     ncol=3, byrow = T
+#   )
+#
+#   # calculate CV SI
+#   # Fetch shallow/deep SI
+#   fetch_shallow_cv            <- terra::classify(fetch_r3, fetch_mat_shallow)
+#   fetch_deep_cv               <- terra::classify(fetch_r3, fetch_mat_deep)
+#   plot(fetch_shallow_cv)
+#   plot(fetch_deep_cv)
+# # tmp1 <- raster::raster(fetch_r)
+# # tmp2 <- raster::raster(fetch_r2)
+# tmp3 <- raster::raster(fetch_r3)
+# oldfetch <- raster::raster("C:/Users/angus/OneDrive/Desktop/github/cpra_orz/data/fetch/fetch_raster_S07_03_03.tif")
+# mapview::mapview(tmp3) + oldfetch + tmp1
+# plot(lw)
+# mapview::mapview(tmp1) + tmp2 + tmp3
+# fetch_r %>%
+  # raster::raster() %>%
+  # mapview::mapview()
 
 }
+
+#   indices_df <-
+#     indices_lst %>%
+#     dplyr::bind_rows() %>%
+#     dplyr::arrange(row, col) %>%
+#     dplyr::group_by(row, col, direction) %>%
+#     dplyr::group_split()
+#
+#   verbose = T
+#   indices_df[[1]]$row
+#
+#   # lapply over each diaganol direction
+#   diag_lst <- lapply(1:length(indices_df), function(x) {
+#
+#     # count on the diagonals
+#     count_diag(
+#       m            = m,
+#       # diag_indices = indices_df[[x]],
+#       row_vect     =  indices_df[[x]]$diag_row,
+#       col_vect     =  indices_df[[x]]$diag_col,
+#       as_df        = TRUE,
+#       cell_res     = cell_res,
+#       max_dist     = max_dist,
+#       verbose      = verbose
+#     ) %>%
+#       dplyr::mutate(
+#         direction = indices_df[[x]]$direction[1],
+#         row = indices_df[[x]]$row[1],
+#         col = indices_df[[x]]$col[1]
+#       )
+#   }) %>%
+#     dplyr::bind_rows()
+#
+#   # get indices of water points
+#   idx2 <-
+#     which(rmat == 1, arr.ind = T) %>%
+#     as.data.frame() %>%
+#     dplyr::arrange(row) %>%
+#     dplyr::group_by(row) %>%
+#     dplyr::group_split()
+#
+#   # **************************
+#   # **************************
+#
+#
+#   # max(row_dist$distance)
+# # indices_df <- idx[[80]]
+#   message(paste0("Calculating fetch distances..."))
+#
+#   # ncores = 13
+#   cl    <- parallel::makeCluster(ncores) #not to overload your computer
+#
+#   # register parallel backend
+#   doParallel::registerDoParallel(cl)
+#
+#   # run a loop using a parallel backend. ~2x faster
+#   fetch_loop <- foreach::foreach(i = 1:length(idx),
+#                                  .combine  = "rbind",
+#                                  .export   = c('cell_res', 'check_cols', 'check_rows',
+#                                                'check_length', 'side_count', 'index_diag',
+#                                                'count_diag_dir', 'count_diag' ,'dist_summary'),
+#                                  .packages = c("dplyr", "tidyr", "purrr")) %dopar% {
+#
+#                                   row_dist <- dist_summary(
+#                                     m          = rmat,
+#                                     indices_df = idx[[i]],
+#                                     cell_res   = cell_res,
+#                                     max_dist   = max_dist
+#                                     )
+#                                   row_dist
+#
+#                                  }
+#
+#   # stop extra workers
+#   doParallel::stopImplicitCluster()
+#   parallel::stopCluster(cl)
+#
+#   # **************************
+#   # **************************
+#
+#   # create fetch raster from gridded matrix
+#   fetch_r <-
+#     terra::rast(
+#       x = matrix(
+#         data = dplyr::arrange(
+#           dplyr::left_join(
+#             expand.grid(
+#               row = 1:terra::nrow(r),
+#               col = 1:terra::ncol(r)
+#               # row = 1:terra::nrow(lw_crop),
+#               # col = 1:terra::ncol(lw_crop)
+#             ),
+#             dplyr::select(fetch_loop, row, col, distance),
+#             by = c("row", "col")
+#           ),
+#           row
+#         )$distance,
+#         nrow  = terra::nrow(r),
+#         ncol  = terra::ncol(r),
+#         # nrow  = terra::nrow(lw_crop),
+#         # ncol  = terra::ncol(lw_crop),
+#         byrow = TRUE
+#       ),
+#       crs    = terra::crs(r),
+#       extent = terra::ext(r)
+#       # crs    = terra::crs(lw_crop),
+#       # extent = terra::ext(lw_crop)
+#     )
+#   # fetchy <- raster::raster(fetch_r)
+#   # mapview::mapview(fetchy)
+#
+#   return(fetch_r)
+
+# }
+  # **************************
+  # **************************
+
+
+  # create grid matrix to convert to raster
+  # grid_df <-  expand.grid(
+  #   row = 1:terra::nrow(lw_crop),
+  #   col = 1:terra::ncol(lw_crop)
+  #   ) %>%
+  #   dplyr::left_join(
+  #     dplyr::select(fetch_loop, row, col, distance),
+  #     by = c("row", "col")
+  #   ) %>%
+  #   dplyr::arrange(row)
+  # expand.grid(
+  #   row = 1:terra::nrow(lw_crop),
+  #   col = 1:terra::ncol(lw_crop)
+  # )
+  # dplyr::arrange(
+  #   dplyr::left_join(
+  #     expand.grid(
+  #       row = 1:terra::nrow(lw_crop),
+  #       col = 1:terra::ncol(lw_crop)
+  #       ),
+  #     dplyr::select(fetch_loop, row, col, distance),
+  #     by = c("row", "col")
+  #     ),
+  #   row
+  #   )$distance
+  #
+  # create grid matrix to convert to raster
+  # grid_mat <- matrix(
+  #   data = dplyr::arrange(
+  #     dplyr::left_join(
+  #       expand.grid(
+  #         row = 1:terra::nrow(lw_crop),
+  #         col = 1:terra::ncol(lw_crop)
+  #         ),
+  #       dplyr::select(fetch_loop, row, col, distance),
+  #       by = c("row", "col")
+  #       ),
+  #     row
+  #     )$distance,
+  #   # data = grid_df$distance,
+  #   # nrow  = terra::nrow(r),
+  #   # ncol  = terra::ncol(r),
+  #   nrow  = terra::nrow(lw_crop),
+  #   ncol  = terra::ncol(lw_crop),
+  #   byrow = TRUE
+  #   )
+
+  # # replace water cells with mean fetch values
+  # rmat2[which(rmat2 == 1, arr.ind = F)] <- fetch_loop$distance
+  #
+  # # fetch_loop$row
+# rmat3 <- rmat
+#   # loop over each row in dataframe and replace old water matrix values with mean fetch distances
+#   for (j in 1:nrow(fetch_loop)) {
+#
+#     message(paste0("Row: ", fetch_loop$row[j], " col: ", fetch_loop$col[j]))
+#     rmat3[fetch_loop$row[j], fetch_loop$col[j]]  <- fetch_loop$distance[j]
+#
+#   }
+
+  # # replace 0 values (land) with NA
+  # rmat3[which(rmat3 == 0)] <- NA
+
+
+  # replace 0 values (land) with NA
+  # rmat[which(rmat == 0)] <- NA
+
+# }
 # system.time(
 #   lst_dist <- lapply(1:length(idx), function(x) {
 #     # idx[[1]]$row
