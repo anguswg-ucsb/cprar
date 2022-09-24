@@ -13,3 +13,17 @@ model_years <- function() {
   return(year_df)
 
 }
+
+# You can fill in the NA values using the focal function with the na.rm argument set to FALSE and pad to TRUE.
+# fill  NA values in a raster
+na_fill <- function(x, i=5) {
+  if( is.na(x)[i] ) {
+
+    return( round(mean(x, na.rm=TRUE),0) )
+
+    } else {
+
+      return( round(x[i],0) )
+
+    }
+  }

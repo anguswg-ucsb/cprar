@@ -44,7 +44,35 @@ parse_directory = function(base_folder){
       dplyr::relocate(scenario, year, type, ext, model_dir, path, full_path)
 
   }) %>%
-    dplyr::bind_rows()
+    dplyr::bind_rows() %>%
+    dplyr::left_join(
+      model_years(),
+      by = c("year" = "model_year")
+    ) %>%
+    dplyr::group_by(model_dir, scenario) %>%
+    dplyr::arrange(num_year, .by_group = T) %>%
+    dplyr::ungroup() %>%
+    dplyr::group_by(scenario, model_dir, decade) %>%
+    dplyr::mutate(
+      file_name = dplyr::case_when(
+              year < 10 ~ paste0("S", scenario, "_", model_dir, "_0", year, "_0", year),
+              TRUE      ~ paste0("S", scenario, "_", model_dir, "_", year, "_", year)
+            ),
+      min_year = min(year),
+      min_year = dplyr::case_when(
+        min_year < 10 ~ paste0("0", min_year),
+        TRUE          ~ paste0(min_year)
+      ),
+      max_year = max(year),
+      max_year = dplyr::case_when(
+        max_year < 10 ~ paste0("0", max_year),
+        TRUE          ~ paste0(max_year)
+      ),
+      range       = paste0(min_year, "_", max_year),
+      model_range = paste0("S", scenario, "_", model_dir, "_", range)
+    ) %>%
+      dplyr::select(-min_year, -max_year) %>%
+      dplyr::ungroup()
 
    return(file_df)
 

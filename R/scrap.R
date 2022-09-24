@@ -25,7 +25,7 @@ file_paths <- parse_files(dir = model_dirs$path[1])
 
 # landtype files
 landtype_files <-
-  file_paths%>%
+  model_dirs %>%
   dplyr::filter(type == "lndtyp")
 r_path = landtype_files$full_path[1]
 # old fetch file

@@ -480,69 +480,143 @@ diag_summary <- function(
     stringsAsFactors = F
   )
 
-  #indices list
-  diags <- lapply(1:nrow(indices_df), function(n) {
+  # indices list
+  diags_lst <- lapply(1:nrow(indices_df), function(n) {
 
-      if(verbose == TRUE) {
-        message(paste0(n, "/", nrow(indices_df)))
-      }
+    if(verbose == TRUE) {
+      message(paste0(n, "/", nrow(indices_df)))
+    }
 
-      diags <- sapply(1:nrow(diag_dirs), function(y) {
+    diags <- sapply(1:nrow(diag_dirs), function(y) {
 
-        diag_dist(
-          m          = m,
-          row_index  = indices_df$row[n],
-          col_index  = indices_df$col[n],
-          vdirect    = diag_dirs[y, 1],
-          hdirect    = diag_dirs[y, 2],
-          max_count  = max_count,
-          as_matrix  = FALSE,
-          id_col     = F,
-          verbose    = F
-        )
-      }) %>%
-        func(na.rm = T)
-      # data.frame(
-      # row        = idx$row[n],
-      # col        = idx$col[n],
-      # cell_count = .,
-      # direction  = c("up_left", "down_left", "up_right", "down_right")
-      # )
+      diag_dist(
+        m          = m,
+        row_index  = indices_df$row[n],
+        col_index  = indices_df$col[n],
+        vdirect    = diag_dirs[y, 1],
+        hdirect    = diag_dirs[y, 2],
+        max_count  = max_count,
+        as_matrix  = FALSE,
+        id_col     = F,
+        verbose    = F
+      )
+    }) %>%
+      func(na.rm = T)
+    # data.frame(row   = idx$row[n], col   = idx$col[n],cell_count = .,
+    # direction  = c("up_left", "down_left", "up_right", "down_right"))
+  })
 
-    })
-  return(diags)
+  return(diags_lst)
 }
+
+# # initiate parallel clusters
+# clust <- parallel::makeCluster(ncores)
+#
+# # export variables to clusters and load packages
+# parallel::clusterExport(clust, c('max_count', 'func', 'rmat', 'idx', "diag_dirs",
+#                                  'diag_dist', "check_length", "m", "indices_df", "verbose"))
+#
+# # export packages to clusters and load
+# parallel::clusterEvalQ(clust, {
+#   library(dplyr)
+# })
+#
+#
+# diags <- parallel::parLapply(cl = clust, 1:nrow(indices_df), function(n) {
+#     if(verbose == TRUE) {
+#       message(paste0(n, "/", nrow(indices_df)))
+#     }
+#     # parallel::parSapply(cl = clust, 1:nrow(diag_dirs), function(y) {
+#       diags <- sapply(1:nrow(diag_dirs), function(y) {
+#
+#         diag_dist(
+#           m          = m,
+#           row_index  = indices_df$row[n],
+#           col_index  = indices_df$col[n],
+#           vdirect    = diag_dirs[y, 1],
+#           hdirect    = diag_dirs[y, 2],
+#           max_count  = max_count,
+#           as_matrix  = FALSE,
+#           id_col     = F,
+#           verbose    = F
+#         )
+#       }) %>%
+#         func(na.rm = T)
+#     })
+
+# stop parallel processing clusters
+# parallel::stopCluster(clust)
 
 side_summary <- function(
     m,
     indices_df,
-    func    = "mean",
-    as_df   = FALSE,
-    verbose = FALSE
+    cell_res  = 480,
+    max_dist  = 20000,
+    func      = "mean",
+    ncores    = 10,
+    as_df     = FALSE,
+    verbose   = FALSE
 ) {
 
   # indices_df <- idx
   # func    = "sum"
   # m <- rmat
-# z <- 658
+  # z <- 4500
+
+  if(verbose == TRUE) {
+    message(paste0(z, "/", nrow(indices_df)))
+  }
+
+  # initiate parallel clusters
+  clust <- parallel::makeCluster(ncores)
+
+  # export variables to clusters and load packages
+  parallel::clusterExport(clust, c('cell_res', 'max_dist', 'rmat', 'idx', "side_count", "check_cols",
+                                   "check_rows", "check_length", "m", "indices_df", "verbose"), envir=environment())
+
+  # export packages to clusters and load
+  parallel::clusterEvalQ(clust, {
+    library(dplyr)
+    library(tidyr)
+  })
+
   # side counts/lengths directions
-  side_lengths <- lapply(1:nrow(indices_df), function(z) {
-      if(verbose == TRUE) {
-        message(paste0(z, "/", nrow(indices_df)))
-      }
+  side_lengths <- parallel::parLapply(cl = clust, 1:nrow(indices_df), function(z) {
+
 
       side_count(
         m         = m,
         row_index = indices_df$row[z],
         col_index = indices_df$col[z],
-        func      = func,
-        verbose   = verbose
+        cell_res  = cell_res,
+        max_dist  = max_dist,
+        func      = "mean",
+        verbose   = FALSE
       )
 
     })
 
+  # stop parallel processing clusters
+  parallel::stopCluster(clust)
+
+  # # # side counts/lengths directions
+  # side_lengths <- lapply(1:nrow(indices_df), function(z) {
+  #     if(verbose == TRUE) {
+  #       message(paste0(z, "/", nrow(indices_df)))
+  #     }
+  #     side_count(
+  #       m         = m,
+  #       row_index = indices_df$row[z],
+  #       col_index = indices_df$col[z],
+  #       func      = func,
+  #       verbose   = verbose
+  #     )
+  #   })
+
     return(side_lengths)
 }
+
+
 #' Retrieve indices of diagonal cells from a specific matrix cell in a direction
 #' @description Given a matrix and the row and column number for the cell of interest, return the index values for the diagonal cells in any direction.
 #' @param m matrix of interest
@@ -1064,139 +1138,244 @@ check_rows <- function(m,
 #' @param verbose logical, whether messages should be printed. Default is FALSE, no messages print.
 #' @return Count of consecutive non-zero cells from a matrix cell, extending out in a given direction
 #' @export
+# check_length <- function(
+#     vect,
+#     max_count,
+#     verbose = FALSE
+# ) {
+#
+#   # vect      = vcol[updown[[2]]]
+#   # vect <- c(1, 1, 0, 0, 1, NA, 0, NA)
+#   # vect <- vect3
+#   # vect <- c(1, 1, 0, 0, 1, 0)
+#   # vect <- c(1, 1, NA, 0, 1, NA, 0, NA)
+#   # vect3 <- vect
+#   # vect <- c(NA, NA, NA, 3, 0)
+#
+#   # replace NA values w/ 2
+#   vect[is.na(vect)] <- 2
+#
+#
+#   # first check if first cell is an NA
+#   if(vect[1] == 2) {
+#
+#     # make count index of first zero minus 1
+#     # count <- length(vect[vect == 2])
+#     count <- NA
+#
+#     # rest of side length logic
+#   } else {
+#
+#     # if first cell is a 0, give count of 0
+#     if(vect[1] == 0) {
+#
+#       count <- 0
+#
+#       if(verbose == TRUE) {
+#
+#         message(paste0("Cell count: ", count))
+#
+#       }
+#
+#     } else {
+#
+#         # check for NAs
+#         na_check <- which(vect == 2)[1]
+#
+#         # index of first 0 minus 1 gives number of cells before a 0 occurs
+#         check <- which(vect == 0)[1]
+#
+#         # check to make sure there is an NA in vector
+#         if(is.na(na_check)) {
+#
+#           # if no zero is encountered, make count length of the vector
+#           if(is.na(check)) {
+#
+#               count <- length(vect)
+#
+#           } else { # if zero is encountered
+#
+#               # make count index of first zero minus 1
+#               count <- check - 1
+#           }
+#
+#         } else {
+#
+#           # if no zero is encountered, make count length of the vector
+#           if(is.na(check)) {
+#
+#               count <- NA
+#
+#           } else {
+#
+#               count <- check - 1
+#
+#           }
+#
+#       }
+#     }
+#   }
+#
+#     #   # check to make sure there is an NA in vector
+#     #   if(!is.na(na_check)) {
+#     #
+#     #     # if no zero is encountered, make count length of the vector
+#     #     if(is.na(check)) {
+#     #
+#     #       count <- length(vect)
+#     #
+#     #     } else { # if zero is encountered
+#     #
+#     #       # check that 0 occurs BEFORE any NA values
+#     #       if(check < na_check) {
+#     #
+#     #         # make count index of first zero minus 1
+#     #         count <- check - 1
+#     #
+#     #       } else {
+#     #
+#     #         # make count index of first zero minus 1
+#     #         count <- length(vect[vect == 2])
+#     #
+#     #       }
+#     #
+#     #     }
+#     #
+#     #   } else {
+#     #
+#     #     # if no zero is encountered, make count length of the vector
+#     #     if(is.na(check)) {
+#     #
+#     #       count <- length(vect)
+#     #
+#     #     } else {
+#     #
+#     #       # make count index of first zero minus 1
+#     #       count <- check - 1
+#     #
+#     #     }
+#     #
+#     #   }
+#     #
+#     # }
+#
+#   # }
+#     # convert to integer
+#     count <- as.integer(count)
+#
+#     if(verbose == TRUE) {
+#       message(paste0("Cell count: ", count))
+#     }
+#
+#
+#
+#   return(count)
+#
+# }
+
+#' Check length of consecutive non-zero cells in vector
+#' @param vect numeric vecto of 1s and 0s
+#' @param verbose logical, whether messages should be printed. Default is FALSE, no messages print.
+#' @return Count of consecutive non-zero cells from a matrix cell, extending out in a given direction
+#' @export
 check_length <- function(
     vect,
     max_count,
     verbose = FALSE
 ) {
-  # vect <- c(1, 1, 0, 0, 1, NA, 0, NA)
-  # vect <- vect3
-  # vect <- c(1, 1, 0, 0, 1, 0)
-  # vect <- c(1, 1, NA, 0, 1, NA, 0, NA)
-  # vect3 <- vect
-  # vect <- c(NA, NA, NA, 3, 0)
+
+  # vect      = vcol[updown[[2]]]
+  # rep(NA, 50)
+  # vect <- rep(NA, 50)
+  # vect <- c(0, 1, 1, NA, 0, 1, NA, NA, NA, NA)
+  # vect <- c(1, 1, 1, 0, 0, 0, 0, NA, NA, NA)
+  # vect <- c(1, 1, 1,  NA, NA, NA, 0, 0, 0, 0)
+  # vect <- c(1, 1, 1, rep(NA, 50))
+  # vect <- c(1, 1, 1, rep(NA, 10))
 
   # replace NA values w/ 2
   vect[is.na(vect)] <- 2
 
-
-  # first check if first cell is an NA
+  # if NA is first value
   if(vect[1] == 2) {
 
-    # make count index of first zero minus 1
-    # count <- length(vect[vect == 2])
-    count <- NA
+    # if number of NAs after first value of NA is longer than the max distance count, make count the max count
+    if(length(which(vect==2)) > max_count) {
+      # message(paste0("if 1"))
+      count <- max_count
 
-    # rest of side length logic
-  } else {
+    # if number of NAs after first value of NA is shorter than the max distance count, make count NA
+    } else {
+      # message(paste0("if 2"))
+      count <- NA
+
+    }
 
     # if first cell is a 0, give count of 0
-    if(vect[1] == 0) {
-
-      count <- 0
-
-      if(verbose == TRUE) {
-
-        message(paste0("Cell count: ", count))
-
-      }
-
-    } else {
-
-        # check for NAs
-        na_check <- which(vect == 2)[1]
-
-        # index of first 0 minus 1 gives number of cells before a 0 occurs
-        check <- which(vect == 0)[1]
-
-        # check to make sure there is an NA in vector
-        if(is.na(na_check)) {
-
-          # if no zero is encountered, make count length of the vector
-          if(is.na(check)) {
-
-              count <- length(vect)
-
-          } else { # if zero is encountered
-
-              # make count index of first zero minus 1
-              count <- check - 1
-          }
-
-        } else {
-
-          # if no zero is encountered, make count length of the vector
-          if(is.na(check)) {
-
-              count <- NA
-
-          } else {
-
-              count <- check - 1
-
-          }
-
-      }
-    }
-  }
-
-    #   # check to make sure there is an NA in vector
-    #   if(!is.na(na_check)) {
-    #
-    #     # if no zero is encountered, make count length of the vector
-    #     if(is.na(check)) {
-    #
-    #       count <- length(vect)
-    #
-    #     } else { # if zero is encountered
-    #
-    #       # check that 0 occurs BEFORE any NA values
-    #       if(check < na_check) {
-    #
-    #         # make count index of first zero minus 1
-    #         count <- check - 1
-    #
-    #       } else {
-    #
-    #         # make count index of first zero minus 1
-    #         count <- length(vect[vect == 2])
-    #
-    #       }
-    #
-    #     }
-    #
-    #   } else {
-    #
-    #     # if no zero is encountered, make count length of the vector
-    #     if(is.na(check)) {
-    #
-    #       count <- length(vect)
-    #
-    #     } else {
-    #
-    #       # make count index of first zero minus 1
-    #       count <- check - 1
-    #
-    #     }
-    #
-    #   }
-    #
-    # }
-
-  # }
-    # convert to integer
-    count <- as.integer(count)
+  } else if(vect[1] == 0) {
+    # message(paste0("else if 1"))
+    count <- 0
 
     if(verbose == TRUE) {
-      message(paste0("Cell count: ", count))
+      # message(paste0("Cell count: ", count))
     }
 
+  } else {
+
+    # check for NAs
+    na_check <- which(vect == 2)[1]
+
+    # index of first 0 minus 1 gives number of cells before a 0 occurs
+    check    <- which(vect == 0)[1]
+
+    # if no 0s or NAs are in vector make count length of vector (number of 1s in vector)
+    if(is.na(check) == TRUE & is.na(na_check) == TRUE) {
+      # message(paste0("else, if"))
+      count <- length(vect)
+
+    } else if(is.na(check) == TRUE & is.na(na_check) == FALSE) {
+      # message(paste0("else, else if 1"))
+      # na_check - 1
+      count <- min(length(which(vect==2)), max_count)
+
+    } else if(is.na(check) == FALSE & is.na(na_check) == TRUE) {
+      # message(paste0("else, else if 2"))
+      # make count index of first zero minus 1
+      count <- check - 1
+
+    } else if(is.na(check) == FALSE & is.na(na_check) == FALSE) {
+      # message(paste0("else, else if 3"))
+      # list 0 and NA positions
+      check_lst   <- c(check, na_check)
+
+      # which is closer to point
+      first_check <- which.min(check_lst)
+
+      if(first_check == 1) {
+        # message(paste0("else, else if 3 - if "))
+        count <- check - 1
+
+      } else {
+        # message(paste0("else, else if 3 - else "))
+        count <- min(length(which(vect==2)), max_count)
+
+      }
+
+      }
 
 
-  return(count)
+  }
+
+  #     # convert to integer
+      count <- as.integer(count)
+
+      if(verbose == TRUE) {
+        message(paste0("Cell count: ", count))
+      }
+
+    return(count)
 
 }
-
 #' Check run length encoding output for cell run of zeros
 #' @param rle_vect rle object
 #' @param verbose logical, whether messages should be printed. Default is FALSE, no messages print.
@@ -1271,6 +1450,10 @@ side_count <- function(
   # col_index = row_nest$data[[4]]$col
   # wide      = FALSE
 
+  # z <- 5300
+  # row_index = indices_df$row[z]
+  # col_index = indices_df$col[z]
+
   # get function
   func <- match.fun(func)
 
@@ -1280,25 +1463,26 @@ side_count <- function(
   # ---- col (up/down) ----
   # vector of current matrix col
   vcol <- m[, col_index]
-
+  # vcol
   # return index list c(up, down) indices, checks if cells are on the edge of raster
   updown <- check_cols(
     m         = m,
     row_index = row_index,
     col_index = col_index
     )
-
+  # rev(vcol[updown[[1]]])
+  # vcol[updown[[2]]]
   # count of up/down cells before a 0, if no zeros occur, returns length of consecutive 1s
   up_count   <- check_length(
     vect      = rev(vcol[updown[[1]]]),
     max_count = max_count
     )
-
+  # up_count
   down_count <- check_length(
     vect      = vcol[updown[[2]]],
     max_count = max_count
     )
-
+  # down_count
   # ---- row (left/right) ----
   # vector of current matrix row
   vrow <- m[row_index, ]
@@ -1584,7 +1768,7 @@ dist_summary <- function(
 #' @importFrom purrr map
 #' @importFrom tidyr nest unnest
 #' @importFrom foreach foreach
-#' @importFrom parallel makeCluster stopCluster
+#' @importFrom parallel makeCluster stopCluster parLapply
 #' @importFrom doParallel registerDoParallel stopImplicitCluster
 #' @importFrom terra as.matrix rast crs ext
 #' @export
@@ -1613,60 +1797,44 @@ get_fetch = function(
     r <- get_landwater(r_path = r_path)
 
   }
-  # plot(r)
+
     # replace NA raster values w/ 0 for calcs
     # r <-  terra::classify(r, cbind(NA, 0))
-
     # r <-  terra::classify(r, cbind(NA, 1))
-    # cell resolution for distance calcs
-    cell_res <- terra::res(r)[1]
 
-    # max count distance
-    max_count <- floor(max_dist/(cell_res))
-    # max_count <- floor(max_dist/(cell_res*sqrt(2)))
+    # mapview::mapview(pts) + lw_r
+    # pt_buffer <- data.frame(
+    #   # lng = 575390,
+    #   # lat = 3260040
+    #   lng = 625390,
+    #   lat = 3275040
+    #   ) %>%
+    #   sf::st_as_sf(coords = c("lng", "lat"), crs = 26915) %>%
+    #   # sf::st_buffer(45000) %>%
+    #   # sf::st_buffer(45000) %>%
+    #   sf::st_buffer(65000) %>%
+    #   sf::st_bbox() %>%
+    #   sf::st_as_sfc()
+    # # mapview::mapview(pt_buffer)
+    #
+    # lw_crop <-
+    #   r %>%
+    #   terra::crop( terra::vect(pt_buffer)) %>%
+    #   terra::mask( terra::vect(pt_buffer))
+    # lw_crop
+    # plot(lw_crop)
+    # r2 <- raster::focal( raster::raster(r), w = matrix(1,5,5),fun = na_fill, pad= T, na.rm = F, NAonly = T )
 
-  # You can fill in the NA values using the focal function with the na.rm argument set to FALSE and pad to TRUE.
+    # lw_crop <-  terra::classify(lw_crop, cbind(NA, 1))
+    # plot(lw_crop)
+    # lw_focal <- terra::focal(r, 297, "max", na.policy="only", na.rm=TRUE)
 
-  # fill  NA values in a raster
-  # na_fill <- function(x, i=5) {
-  #   if( is.na(x)[i] ) {
-  #     return( round(mean(x, na.rm=TRUE),0) )
-  #   } else {
-  #     return( round(x[i],0) )
-  #   }
-  # }
+  # cell resolution for distance calcs
+  cell_res <- terra::res(r)[1]
 
-  # mapview::mapview(pts) + lw_r
-  # pt_buffer <- data.frame(
-  #   # lng = 625390,
-  #   # lat = 3255040
-  #   lng = 625390,
-  #   lat = 3275040
-  #   # lng = 730390,
-  #   # lat = 3240040
-  # ) %>%
-  #   sf::st_as_sf(coords = c("lng", "lat"), crs = 26915) %>%
-  #   # sf::st_buffer(30000) %>%
-  #   sf::st_buffer(65000) %>%
-  #   sf::st_bbox() %>%
-  #   sf::st_as_sfc()
-  # # %>%
-  #   # terra::vect()
-  #
-  # mapview::mapview(pt_buffer)
-  # lw_crop <-
-  #   r %>%
-  #   terra::crop( terra::vect(pt_buffer)) %>%
-  #   terra::mask( terra::vect(pt_buffer))
-  #   # terra::crop(pt_buffer) %>%
-  #   # terra::mask(pt_buffer)
-  # lw_crop
-  # plot(lw_crop)
-  # r2 <- raster::focal( raster::raster(r),  w      = matrix(1,5,5),  fun    = na_fill, pad    = T, na.rm  = F, NAonly = T )
-
-  # lw_crop <-  terra::classify(lw_crop, cbind(NA, 1))
-  # plot(lw_crop)
-  # lw_focal <- terra::focal(r, 297, "max", na.policy="only", na.rm=TRUE)
+  # max count distance
+  max_count <- floor(max_dist/(cell_res))
+  # max_count <- floor(max_dist/(cell_res*sqrt(2)))
 
   # make landwater raster a wide matrix
   rmat <- terra::as.matrix(r, wide = TRUE)
@@ -1682,13 +1850,17 @@ get_fetch = function(
   if(verbose == TRUE) {
     message(paste0("Calculating North/South/East/West distances"))
   }
+
   # system.time(
 
   # side cell totals list
   side_lst <- side_summary(
     m          = rmat,
     indices_df = idx,
+    cell_res   = cell_res,
+    max_dist   = max_dist,
     func       = "mean",
+    ncores     = ncores,
     verbose    = FALSE
   )
 
@@ -1765,47 +1937,30 @@ get_fetch = function(
       # extent = terra::ext(lw_crop)
     )
 
-  return(fetch_r)
   # plot(fetch_r)
-  # plot(fetch_r2)
-#   plot(fetch_r3)
-#
+  return(fetch_r)
+}
 #   # Reclassify fetch values
-#   fetch_mat_shallow <- matrix(
-#     c(0, 1000, 1,
-#       1000, 5000, .5,
-#       5000, 20001, .2),
-#     ncol=3,
-#     byrow = T
-#   )
-#
-#
-#   # Reclassify fetch values for deep water
-#   fetch_mat_deep <- matrix(
-#     c(0,     5000,   1,          # deep water fetch bins
-#       5000,  10000, .5,
-#       10000, 20001, .2),
-#     ncol=3, byrow = T
-#   )
-#
+  # fetch_mat_shallow <- matrix(
+  #   c(0, 1000, 1,
+  #     1000, 5000, .5,
+  #     5000, 20001, .2),
+  #   ncol=3,
+  #   byrow = T
+  # )
+
 #   # calculate CV SI
 #   # Fetch shallow/deep SI
-#   fetch_shallow_cv            <- terra::classify(fetch_r3, fetch_mat_shallow)
-#   fetch_deep_cv               <- terra::classify(fetch_r3, fetch_mat_deep)
+#   fetch_shallow_cv            <- terra::classify(fetch_r, fetch_mat_shallow)
+#   fetch_deep_cv               <- terra::classify(fetch_r, fetch_mat_deep)
 #   plot(fetch_shallow_cv)
 #   plot(fetch_deep_cv)
-# # tmp1 <- raster::raster(fetch_r)
-# # tmp2 <- raster::raster(fetch_r2)
-# tmp3 <- raster::raster(fetch_r3)
+# tmp1 <- raster::raster(fetch_r)
 # oldfetch <- raster::raster("C:/Users/angus/OneDrive/Desktop/github/cpra_orz/data/fetch/fetch_raster_S07_03_03.tif")
-# mapview::mapview(tmp3) + oldfetch + tmp1
-# plot(lw)
-# mapview::mapview(tmp1) + tmp2 + tmp3
-# fetch_r %>%
-  # raster::raster() %>%
-  # mapview::mapview()
+# tmp_crop <- raster::raster(lw_crop)
+# mapview::mapview(tmp1) + oldfetch +tmp_crop
 
-}
+
 
 #   indices_df <-
 #     indices_lst %>%
@@ -2086,6 +2241,28 @@ get_fetch = function(
 #
 # # count of western cells before a 0
 # west_count <- west_rle$lengths[west_idx - 1]
+# *****************************************************************************
+# *****************************************************************************
+get_fetch_si <- function(r) {
+
+  # fetch_stk$S07_G510_new_FWOA_32_32_fetch$S07_G510_new_FWOA_32_32_fetch %>% plot()
+  r <- fetch_stk$S07_G510_new_FWOA_32_32_fetch$S07_G510_new_FWOA_32_32_fetch
+
+  # calculate shallow water fetch SI values
+  fetch_shallow <- terra::app(r, fun = si_fetch_shallow)
+
+  # calculate deep water fetch SI values
+  fetch_deep    <- terra::app(r, fun = si_fetch_deep)
+
+  plot(r)
+  plot(fetch_shallow)
+  plot(fetch_deep)
+  # rm(tmp1, tmp2, fetch_shallow_cv, fetch_deep_cv)
+  # tmp1 <- raster::raster(shallow)
+  # tmp2 <- raster::raster(deep)
+  # mapview::mapview(tmp1) +tmp2
+
+}
 
 # *****************************************************************************
 # *****************************************************************************
