@@ -13,6 +13,7 @@ source("R/parse_directory.R")
 source("R/get_fetch.R")
 source("R/utils.R")
 source("R/si_functions.R")
+source("R/roads.R")
 
 # hsi grid for resampling
 # hsi_grid <- terra::rast("data/hsi_grid.tif")
@@ -262,22 +263,6 @@ extract_depth <- function(
 
   # data_paths <- path_df
 
-  # # data names
-  # lst_names <- unique(paste0("S", data_paths$scenario, "_", data_paths$model_dir))
-  #
-  # # Inundation file paths
-  # inun_paths <-
-  #   data_paths %>%
-  #   dplyr::filter(type == "inun") %>%
-  #   dplyr::group_by(model_dir, scenario) %>%
-  #   dplyr::arrange(year, .by_group = T) %>%
-  #   dplyr::mutate(
-  #     file_name = dplyr::case_when(
-  #       year < 10 ~ paste0("S", scenario, "_", model_dir, "_0", year, "_0", year),
-  #       TRUE      ~ paste0("S", scenario, "_", model_dir, "_", year, "_", year)
-  #     )
-  #   ) %>%
-  #   dplyr::group_split()
 
   # grid to resample rasters to
   resample_grid <- make_grid()
@@ -331,26 +316,8 @@ extract_depth <- function(
 
 extract_fetch <- function(
     data_paths,
-    lst_names,
     verbose = TRUE
 ) {
-
-  # # data names
-  # lst_names <- unique(paste0("S", data_paths$scenario, "_", data_paths$model_dir))
-  #
-  # # Inundation file paths
-  # landtype_paths <-
-  #   data_paths %>%
-  #   dplyr::filter(type == "lndtyp") %>%
-  #   dplyr::group_by(model_dir, scenario) %>%
-  #   dplyr::arrange(year, .by_group = T) %>%
-  #   dplyr::mutate(
-  #     file_name = dplyr::case_when(
-  #       year < 10 ~ paste0("S", scenario, "_", model_dir, "_0", year, "_0", year),
-  #       TRUE      ~ paste0("S", scenario, "_", model_dir, "_", year, "_", year)
-  #     )
-  #   ) %>%
-  #   dplyr::group_split()
 
   if(verbose == TRUE) {
     message(paste0("Processing fetch..."))
@@ -370,6 +337,7 @@ extract_fetch <- function(
     fetch <- get_fetch(
       r_path    = fetch_path,
       max_dist  = 20000,
+      ncores    = 12,
       verbose   = TRUE
     ) %>%
       stats::setNames(c(paste0(data_paths[[y]]$file_name, "_fetch")))
@@ -391,150 +359,7 @@ extract_fetch <- function(
   return(fetch_stk)
 }
 
-#' Calculate Oyster viability SI (cool)
-#'
-#' @param x numeric value indicating min temp cold months (smin_c) to calculate SI values
-#' @param ...
-#' @return numeric SI values
-#' @export
-#' @examples
-si_cool_func <- function(x, ...) {
-  ifelse(x <= 1, 0,
-         ifelse(x > 1 & x < 8, (0.1429*x) - 0.1429,
-                ifelse(x >= 8 & x < 10, 1,
-                       ifelse(x >= 10 & x < 15, ((-0.16)*x) + 2.6,
-                              ifelse(x >= 15 & x < 20, ((-0.0398)*x) + 0.797,
-                                     ifelse(x >= 20, 0.001, 0)
-                              ))))
-  )
-}
 
-#' Calculate Oyster viability SI (warm)
-#'
-#' @param x numeric value indicating min temp warm months (smin_w) to calculate SI values
-#' @param ...
-#' @return numeric SI values
-#' @export
-si_warm_func <- function(x, ...) {
-  ifelse(x <= 2, 0,
-         ifelse(x > 2 & x < 8, (0.1667*x) - 0.3333,
-                ifelse(x >= 8 & x < 10, 1,
-                       ifelse(x >= 10 & x < 15, ((-0.16)*x) + 2.6,
-                              ifelse(x >= 15 & x < 20, ((-0.0398)*x) + 0.797,
-                                     ifelse(x >= 20, 0.001, 0)
-                              ))))
-  )
-}
-
-#' Calculate Oyster viability SI (average)
-#' @param x numeric value indicating mean temp (s_mean) to calculate SI values
-#' @param ...
-#' @return numeric SI values
-#' @export
-si_av_func <- function(x, ...) {
-  ifelse(x < 5, 0,
-         ifelse(x >= 5 & x < 10, (0.2*x) - 1.0,
-                ifelse(x >= 10 & x <= 25, 1,
-                       ifelse(x > 25 & x <= 30, ((-0.16)*x) + 5,
-                              ifelse(x > 30 & x <= 36, ((-0.0332)*x) + 1.195,
-                                     ifelse(x > 36, 0.001, 0)
-                              ))))
-  )
-}
-
-#' Calculate Oyster Viability SI from multiple model runs/scenarios over a period
-#' @description Iterates over multiple years of MP output rasters and calculates Oyster viability SI values and returns SpatRasters
-#' @param stack_lst List of SpatRaster stacks containing multiple years of MP Rasters, must include "smin_c", "smin_w", and "s_mean" layers
-#' @param verbose logical, whether to print messages. Default is TRUE, prints messages
-#' @return SpatRaster of OV SI values
-#' @export
-extract_ov <- function(
-    stack_lst,
-    verbose = TRUE
-    ) {
-
-  # iterate over all models and calculate Oyster viability SI
-  ov_stk <- lapply(1:length(stack_lst), function(i) {
-
-    if(verbose == TRUE) {
-      message(paste0("Processing ", names(stack_lst)[i], " - ", i, "/", length(stack_lst)))
-
-    }
-    # model to iterate over
-    st <- stack_lst[[i]]
-
-    # iterate over model run years
-    ov <- lapply(1:length(st), function(z) {
-
-      if(verbose == TRUE) {
-        message(paste0("Year: ", z, "/", length(st)))
-      }
-
-      # process Oyster viability SI
-      ov_si <- get_ov(
-        coolr         = st[z][grep('smin_c', names(st[z]), value = T)],
-        warmr         = st[z][grep('smin_w', names(st[z]), value = T)],
-        avgr          = st[z][grep('s_mean', names(st[z]), value = T)],
-        model_version = names(st)[z]
-      )
-
-
-    }) %>%
-      terra::sds() %>%
-      stats::setNames(c(paste0(names(st), "_ov")))
-
-  })
-
-  return(ov_stk)
-
-}
-
-# make oyster viability layers from MP raster layers
-get_ov <- function(
-    coolr,
-    warmr,
-    avgr,
-    model_version
-    ) {
-
-  #   coolr <- st$S07_G510_new_FWOA_03_03$smin_c_S07_03_03
-  #   warmr <- st$S07_G510_new_FWOA_03_03$smin_w_S07_03_03
-  #   avgr  <- st$S07_G510_new_FWOA_03_03$s_mean_S07_03_03
-
-  # Apply SI equations
-
-  # SI cool
-  si_cool <-
-    coolr %>%
-    terra::app(fun = si_cool_func) %>%
-    stats::setNames(c(paste0(model_version, "_si_cool")))
-
-  # SI warm
-  si_warm <-
-    warmr %>%
-    terra::app(fun = si_warm_func) %>%
-    stats::setNames(c(paste0(model_version, "_si_warm")))
-
-  # SI average
-  si_avg  <-
-    avgr %>%
-    terra::app(fun  = si_av_func) %>%
-    stats::setNames(c(paste0(model_version, "_si_avg")))
-
-  # SI MS
-  si_ms     <- (si_cool * si_warm)**(0.5)
-  names(si_ms) <-  c(paste0(model_version, "_si_ms"))
-
-  # SI OV
-  si_ov     <- (si_ms  * si_avg)**(0.5)
-  names(si_ov) <-  c(paste0(model_version, "_si_ov"))
-
-  # return raster stack
-  ov <- c(si_cool, si_warm, si_avg, si_ms, si_ov)
-
-  return(ov)
-
-  }
 # make oyster viability layers from MP raster layers
 # get_ov <- function(mp_data, land = NULL, mask = FALSE) {
 #
@@ -587,17 +412,14 @@ get_ov <- function(
 #' @export
 make_rasters <- function(
     data_paths,
-    grid
+    grid,
+    road_buffer_path
     ) {
 
+  # road_buffer_path <- "D:/cpra_fixed/road_buffer.gpkg"
   # data_paths <- model_dirs
   # grid <- hsi_grid
-  # data names
-  # lst_names <- unique(paste0("S", data_paths$scenario, "_", data_paths$model_dir))
-  #
-  # # data names
-  # lst_names <- unique(paste0("S", data_paths$scenario, "_", data_paths$model_dir))
-  #
+
   # # Inundation file paths
   # landtype_paths <-
   #   data_paths %>%
@@ -608,14 +430,11 @@ make_rasters <- function(
   #     file_name = dplyr::case_when(
   #       year < 10 ~ paste0("S", scenario, "_", model_dir, "_0", year, "_0", year),
   #       TRUE      ~ paste0("S", scenario, "_", model_dir, "_", year, "_", year)
-  #     )
-  #   ) %>%
+  #     )) %>%
   #   dplyr::group_split()
 
   # data names
   lst_names <- unique(data_paths$model_range)
-
-  # data names
   # lst_names <- unique(paste0("S", data_paths$scenario, "_", data_paths$model_dir))
 
   # seperate paths by data type
@@ -644,53 +463,14 @@ make_rasters <- function(
   #   dplyr::mutate(
   #     file_name = dplyr::case_when(
   #       year < 10 ~ paste0("S", scenario, "_", model_dir, "_0", year, "_0", year),
-  #       TRUE      ~ paste0("S", scenario, "_", model_dir, "_", year, "_", year)
-  #     )
-  #   )
-  #
+  #       TRUE      ~ paste0("S", scenario, "_", model_dir, "_", year, "_", year)))
   # path_lst <-
   #   path_df %>%
   #   dplyr::group_split() %>%
   #   stats::setNames(c(dplyr::mutate(
   #                       dplyr::group_keys(path_df),
   #                       file_name = paste0("S", scenario, "_", model_dir)
-  #                       )$file_name)
-  #                   )
-  #
-  #
-  # # lst_names <-
-  # #   data_paths %>%
-  # #   dplyr::group_by(model_dir, scenario) %>%
-  # #   dplyr::slice(1)
-  #
-  # # Inundation file paths
-  # inun_paths <-
-  #   data_paths %>%
-  #   dplyr::filter(type == "inun") %>%
-  #   dplyr::group_by(model_dir, scenario) %>%
-  #   dplyr::arrange(year, .by_group = T) %>%
-  #   dplyr::mutate(
-  #     file_name = dplyr::case_when(
-  #       year < 10 ~ paste0("S", scenario, "_", model_dir, "_0", year, "_0", year),
-  #       TRUE      ~ paste0("S", scenario, "_", model_dir, "_", year, "_", year)
-  #       )
-  #     ) %>%
-  #   dplyr::group_split()
-  #
-  # # OYSTE file paths
-  # oyst_paths <-
-  #   data_paths %>%
-  #   dplyr::filter(type == "OYSTE") %>%
-  #   dplyr::group_by(model_dir, scenario) %>%
-  #   dplyr::arrange(year, .by_group = T) %>%
-  #   dplyr::mutate(
-  #     file_name = dplyr::case_when(
-  #       year < 10 ~ paste0("S", scenario, "_", model_dir, "_0", year, "_0", year),
-  #       TRUE      ~ paste0("S", scenario, "_", model_dir, "_", year, "_", year)
-  #       )
-  #   ) %>%
-  #   dplyr::slice(1:2) %>%
-  #   dplyr::group_split()
+  #                       )$file_name))
 
   # Masterplan CSV files
   mp_paths <-
@@ -714,10 +494,7 @@ make_rasters <- function(
     dplyr::arrange(year, .by_group = T) %>%
     dplyr::group_split()
 
-  # paths <- data_paths$full_path[1:2]
-  # i <- 1
-  # z <- 1
-  # system.time(
+
   # loop through paths and rasterize each column variable in each MP CSV
   model_stk <- lapply(1:length(mp_paths), function(i) {
 
@@ -739,24 +516,11 @@ make_rasters <- function(
     }) %>%
     stats::setNames(c(lst_names))
 
-# )
-
-  message(paste0("Extracting sedimentation layers..."))
-
-  # Calculate Mean sediment deposition
-  # calculate mean sediment deposition per model version/decade/scenario
-  sedim_stk <- extract_sedim(
-                      stack_lst = model_stk,
-                      verbose   = TRUE
-                      )
-
-  # Calculate Oyster Viability
-  # iterate over all models and calculate Oyster viability SI
+  # Calculate Oyster Viability SI - iterate over all models
   ov_stk <- extract_ov(
     stack_lst = model_stk,
     verbose   = TRUE
   )
- # ov_stk[[1]]$S07_G510_new_FWOA_03_03_ov %>% plot()
 
   # extract depth rasters and process into bins
   depth_stk <- extract_depth(
@@ -769,6 +533,53 @@ make_rasters <- function(
     data_paths = land_paths,
     verbose    = TRUE
   )
+
+  message(paste0("Extracting sedimentation layers..."))
+
+  # calculate mean sediment deposition per model version/decade/scenario
+  sedim_stk <- extract_sedim(
+    stack_lst = model_stk,
+    verbose   = TRUE
+  )
+
+  # rasterize road buffer polygons
+  road_buffer <- make_road_raster(
+    shp_path = road_buffer_path,
+    verbose  = TRUE
+    )
+
+  water_depths <- c("shallow", "deep")
+  # z <- 1
+  # i <- 1
+
+  fetch_si <- lapply(1:length(fetch_stk), function(i){
+
+    fr <- fetch_stk[[i]]
+
+    message(paste0(names(fr)))
+
+    si_lst <- lapply(1:length(water_depths), function(z){
+
+      # message(paste0(names(fr), " - ", water_depths[[z]]))
+      si_fetch(
+        r          = fr,
+        depth_zone = water_depths[[z]],
+        verbose    = TRUE
+      )
+
+    }) %>%
+      terra::rast()
+
+  })
+
+  shallow_fetch <- si_fetch(
+    r          = fetch_stk$S07_G510_new_FWOA_12_12_fetch,
+    depth_zone = "shallow",
+    verbose    = TRUE
+    )
+
+
+
   # plot(fetch_stk$S07_G511_without_diversions_32_32_fetch)
   # Calculate Oyster Viability
 
@@ -915,165 +726,6 @@ si4_avg_func <- function(x, ...) {
   )
 }
 
-# SI 5 function % of cell covered by land
-#' Calculate percent of cell covered by land SI values (SI 5)
-#' @param x numeric value representing percent of land (pct_land)
-#' @param ...
-#' @return numeric SI 5 values
-#' @export
-si5_func <- function(x, ...) {
-  -x + 1.0
-}
-
-# SI 6 Sediment Deposition function
-si6_sed_dep_func <- function(x, ...) {
-  ifelse(x < 35, 1,
-         ifelse(x >= 35 & x < 40, (-0.2*x) + 8.0,
-                ifelse(x >= 40, 0, 0)
-         )
-  )
-}
-
-#' Depth relationship Function
-#' @param x numeric value representing depth
-#' @param ...
-#' @return Numeric representing a depth bin
-#' @export
-depth_func <- function(x, ...) {
-  ifelse(x > 0 & x < 2, 1,
-         ifelse(x >= 2 & x <= 5, 2,
-                ifelse(x > 5, 3, NA))
-  )
-}
-
-extract_depth <- function(
-    data_paths,
-    verbose = TRUE
-    ) {
-
-  # data_paths <- path_df
-
-  # # data names
-  # lst_names <- unique(paste0("S", data_paths$scenario, "_", data_paths$model_dir))
-  #
-  # # Inundation file paths
-  # inun_paths <-
-  #   data_paths %>%
-  #   dplyr::filter(type == "inun") %>%
-  #   dplyr::group_by(model_dir, scenario) %>%
-  #   dplyr::arrange(year, .by_group = T) %>%
-  #   dplyr::mutate(
-  #     file_name = dplyr::case_when(
-  #       year < 10 ~ paste0("S", scenario, "_", model_dir, "_0", year, "_0", year),
-  #       TRUE      ~ paste0("S", scenario, "_", model_dir, "_", year, "_", year)
-  #     )
-  #   ) %>%
-  #   dplyr::group_split()
-
-  # grid to resample rasters to
-  resample_grid <- make_grid()
-
-  if(verbose == TRUE) {
-    message(paste0("Processing depth inundation..."))
-  }
-
-  depth_stk <- lapply(1:length(data_paths), function(y) {
-
-    if(verbose == TRUE) {
-      message(paste0(data_paths[[y]]$file_name, " - ", y, "/", length(data_paths)))
-    }
-
-    # path to Inun TIF
-    depth_path <- data_paths[[y]]$full_path
-
-    # read in depth (inun) raster and set CRS to match grid
-    depth <-
-      depth_path  %>%
-      terra::rast() %>%
-      terra::set.crs(terra::crs(resample_grid)) %>%
-      terra::resample(resample_grid) %>%                    # resample 30x30 depth inundation raster to match grid
-      terra::app(fun = depth_func) %>%
-      stats::setNames(c(paste0(data_paths[[y]]$file_name, "_water_depth")))
-
-  })
-
-  # get layers names
-  stk_names <- lapply(1:length(depth_stk), function(k){
-    names(depth_stk[[k]])
-  }) %>%
-    unlist()
-
-  # name stack by layer names and make sds
-  depth_stk <-
-    depth_stk %>%
-    stats::setNames(c(stk_names)) %>%
-    terra::sds()
-
-  return(depth_stk)
-}
-
-extract_fetch <- function(
-    data_paths,
-    # lst_names,
-    verbose = TRUE
-    ) {
-
-  # # data names
-  # lst_names <- unique(paste0("S", data_paths$scenario, "_", data_paths$model_dir))
-  #
-  # # Inundation file paths
-  # landtype_paths <-
-  #   data_paths %>%
-  #   dplyr::filter(type == "lndtyp") %>%
-  #   dplyr::group_by(model_dir, scenario) %>%
-  #   dplyr::arrange(year, .by_group = T) %>%
-  #   dplyr::mutate(
-  #     file_name = dplyr::case_when(
-  #       year < 10 ~ paste0("S", scenario, "_", model_dir, "_0", year, "_0", year),
-  #       TRUE      ~ paste0("S", scenario, "_", model_dir, "_", year, "_", year)
-  #     )
-  #   ) %>%
-  #   dplyr::group_split()
-
-  if(verbose == TRUE) {
-    message(paste0("Processing fetch..."))
-  }
-
-  # calculate fetch
-  fetch_stk <-  lapply(1:length(data_paths), function(y) {
-
-    if(verbose == TRUE) {
-      message(paste0(data_paths[[y]]$file_name, " - ", y, "/", length(data_paths)))
-    }
-
-    # path to Inun TIF
-    fetch_path <- data_paths[[y]]$full_path
-
-    # calculate fetch from landtype raster
-    fetch <- get_fetch(
-      r_path    = fetch_path,
-      max_dist  = 20000,
-      ncores    = 12,
-      verbose   = TRUE
-      ) %>%
-      stats::setNames(c(paste0(data_paths[[y]]$file_name, "_fetch")))
-
-  })
-
-  # get layers names
-  stk_names <- lapply(1:length(fetch_stk), function(k){
-    names(fetch_stk[[k]])
-  }) %>%
-    unlist()
-
-  # name stack by layer names and make sds
-  fetch_stk <-
-    fetch_stk %>%
-    stats::setNames(c(stk_names)) %>%
-    terra::sds()
-
-  return(fetch_stk)
-}
 # Calculate tradition cultch model HSI
 # inputs:
 # 1. Masterplan raster data w/ naming conventions

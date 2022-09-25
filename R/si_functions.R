@@ -175,16 +175,79 @@ si_fetch_deep <- function(x) {
   # )
 
 }
+si_fetch <- function(
+    r,
+    depth_zone = "shallow",
+    verbose    = TRUE
+) {
+
+  # Calculate shallow water fetch SI
+  if(depth_zone == "shallow") {
+
+    if(verbose == TRUE) {
+      message(paste0("Calculating shallow water SI values..."))
+    }
+
+    # calculate shallow water fetch SI values
+    fetch_si <-
+      r %>%
+      terra::app(fun = si_fetch_shallow) %>%
+      stats::setNames(c(gsub("_fetch", "_si_fetch_shallow", names(r))))
+
+  # Calculate deep water fetch SI
+  } else if(depth_zone == "deep") {
+
+    if(verbose == TRUE) {
+      message(paste0("Calculating deep water SI values..."))
+    }
+
+    # calculate deep water fetch SI values
+    fetch_si <-
+      r %>%
+      terra::app(fun = si_fetch_deep) %>%
+      stats::setNames(c(gsub("_fetch", "_si_fetch_deep", names(r))))
+
+  # If anything other than "shallow" or "deep", then calculate shallow water fetch SI
+  } else {
+
+    if(verbose == TRUE) {
+      message(paste0("Depth zone: ", depth_zone, " invalid"))
+      message(paste0("Calculating shallow water SI values..."))
+    }
+
+    # calculate shallow water fetch SI values
+    fetch_si <-
+      r %>%
+      terra::app(fun = si_fetch_shallow) %>%
+      stats::setNames(c(gsub("_fetch", "_si_fetch_shallow", names(r))))
+
+  }
+
+  return(fetch_si)
+
+}
+
+#' Depth relationship Function
+#' @param x numeric value representing depth
+#' @param ...
+#' @return Numeric representing a depth bin
+#' @export
+depth_func <- function(x, ...) {
+  ifelse(x > 0 & x < 2, 1,
+         ifelse(x >= 2 & x <= 5, 2,
+                ifelse(x > 5, 3, NA))
+  )
+}
 
 depth_zone <- function(
     depth_rast,
-    zone = "shallow"
+    depth_zone = "shallow"
     ) {
 
-  depth_rast <- depth_stk$S07_G510_new_FWOA_32_32_water_depth
+#   depth_rast <- depth_stk$S07_G510_new_FWOA_32_32_water_depth
+# plot(depth_rast)
 
-
-  if(zone == "shallow") {
+  if(depth_zone == "shallow") {
 
     # depth_mask
     # mask for shallow waters
@@ -201,33 +264,27 @@ depth_zone <- function(
 
   }
 
-
-  # calculate shallow water fetch SI values
-  fetch_shallow <- terra::app(r, fun = si_fetch_shallow)
-
-  # calculate deep water fetch SI values
-  fetch_deep    <- terra::app(r, fun = si_fetch_deep)
-
-
-  plot(depth_rast)
-  plot(shallow_mask)
-  plot(deep_mask)
-
-  fetch_shallow_mask <-
-    fetch_shallow %>%
-    terra::mask(shallow_mask, inverse = F)
-  plot(fetch_shallow)
-  plot(fetch_shallow_mask)
-
-  fetch_deep_mask <-
-    fetch_deep %>%
-    terra::mask(deep_mask, inverse = F)
-  plot(fetch_deep)
-  plot(fetch_deep_mask)
-
-  tmp1 <- raster::raster(fetch_shallow_mask)
-  tmp2 <- raster::raster(fetch_deep_mask)
-  mapview::mapview(tmp1) + tmp2
-
 }
+
+#   plot(depth_rast)
+#   plot(shallow_mask)
+#   plot(deep_mask)
+#
+#   fetch_shallow_mask <-
+#     fetch_shallow %>%
+#     terra::mask(shallow_mask, inverse = T)
+#   plot(fetch_shallow)
+#   plot(fetch_shallow_mask)
+#
+#   fetch_deep_mask <-
+#     fetch_deep %>%
+#     terra::mask(deep_mask, inverse = F)
+#   plot(fetch_deep)
+#   plot(fetch_deep_mask)
+#
+#   tmp1 <- raster::raster(fetch_shallow_mask)
+#   tmp2 <- raster::raster(fetch_deep_mask)
+#   mapview::mapview(tmp1) + tmp2
+#
+# }
 
