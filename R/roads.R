@@ -37,6 +37,8 @@ make_road_raster <- function(
   # %>%
   #   terra::rast()
 
+  tmp_lst <- list()
+
   # loop through each rasterized road layer and
   for (i in 1:(length(road_lst)-1)) {
     if(verbose == TRUE) {

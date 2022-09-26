@@ -219,7 +219,8 @@ extract_sedim <- function(
         sedim <-
           sedim %>%
           terra::mean() %>%
-          stats::setNames(c(paste0(names(stack_lst)[i], "_", year_range, "_sediment_deposition")))
+          stats::setNames(c(paste0(names(stack_lst)[i], "_sediment_deposition")))
+          # stats::setNames(c(paste0(names(stack_lst)[i], "_", year_range, "_sediment_deposition")))
 
         # convert centimeters to millimeters
         sedim <- sedim*10
@@ -534,6 +535,12 @@ make_rasters <- function(
     verbose    = TRUE
   )
 
+  # calculate fetch SI values
+  fetch_si <- calc_fetch_si(
+    stack_lst = fetch_stk,
+    verbose   = TRUE
+  )
+
   message(paste0("Extracting sedimentation layers..."))
 
   # calculate mean sediment deposition per model version/decade/scenario
@@ -542,41 +549,32 @@ make_rasters <- function(
     verbose   = TRUE
   )
 
-  # rasterize road buffer polygons
-  road_buffer <- make_road_raster(
+  # calculate sediment deposition SI values
+  sedim_si <- calc_sedim_si(
+    stack_lst = sedim_stk,
+    verbose   = TRUE
+  )
+
+  # rasterize road buffer polygons and calculate SI values
+  road_si <- make_road_raster(
     shp_path = road_buffer_path,
     verbose  = TRUE
-    )
+    ) %>%
+    terra::app(fun = si_roads) %>%
+    stats::setNames("layer")
 
-  water_depths <- c("shallow", "deep")
-  # z <- 1
-  # i <- 1
+  # Generate Commercial viability SpatRasterDataset
+  cv_stk <- get_cv(
+    roads   = road_si,
+    fetch   = fetch_si,
+    sedim   = sedim_si,
+    depth   = depth_stk,
+    verbose = TRUE
+  )
 
-  fetch_si <- lapply(1:length(fetch_stk), function(i){
+  # plot(road_buffer$layer)
+  # plot(road_si)
 
-    fr <- fetch_stk[[i]]
-
-    message(paste0(names(fr)))
-
-    si_lst <- lapply(1:length(water_depths), function(z){
-
-      # message(paste0(names(fr), " - ", water_depths[[z]]))
-      si_fetch(
-        r          = fr,
-        depth_zone = water_depths[[z]],
-        verbose    = TRUE
-      )
-
-    }) %>%
-      terra::rast()
-
-  })
-
-  shallow_fetch <- si_fetch(
-    r          = fetch_stk$S07_G510_new_FWOA_12_12_fetch,
-    depth_zone = "shallow",
-    verbose    = TRUE
-    )
 
 
 
@@ -673,6 +671,7 @@ object.size(  (mp_rast))
   plot(mp_rast)
 
 }
+
 
 
 # SI 2 function

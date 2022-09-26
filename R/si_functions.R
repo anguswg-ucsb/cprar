@@ -124,12 +124,19 @@ si6_sed_dep_func <- function(x, ...) {
   )
 }
 
-# sediment deposition CV (millimeters)
-sedim_func <- function(x, ...) { #
+
+#' Sediment deposition SI values
+#' @param x numeric value for sediment deposition (mm)
+#' @param ...
+#' @return
+#' @export
+si_sedim_func <- function(x, ...) { #
   ifelse(x == 0, 1,
          ifelse(x >= 0 & x < 40,  1 + (-0.0225*x),
                 ifelse(x >= 40, 0.1, 0
-                )))
+                       )
+                )
+         )
 }
 
 #' Calculate shallow water fetch SI values
@@ -152,6 +159,30 @@ si_fetch_shallow <- function(x) {
   #     5000, 20001, .2),
   #   ncol=3, byrow = T
   # )
+}
+#' Calculate road buffer SI values
+#' @param x numeric value representing distance from roads (kilometers)
+#' @return numeric road buffer SI values
+#' @export
+si_roads <- function(x) {
+  # Reclassify fetch values for deep water
+  ifelse(x >= 0 & x <= 5, 1,
+         ifelse(x > 5 & x <= 10, 0.5,
+                ifelse(x > 10 & x <= 20, 0.2,
+                       ifelse(x > 20, 0.1, 0)
+                )
+         )
+  )
+
+  # Reclassify road buffers values
+  # road_mat <- matrix(
+  #   c(0, 5, 1,
+  #     5, 10, 0.5,
+  #     10, 20, 0.2,
+  #     20, 30, 0.1),
+  #   ncol=3, byrow = T
+  # )
+
 }
 
 #' Calculate deep water fetch SI values
@@ -227,6 +258,88 @@ si_fetch <- function(
 
 }
 
+calc_fetch_si <- function(stack_lst, verbose = TRUE) {
+
+  # water depths
+  water_depths <- c("shallow", "deep")
+
+  # loop through each fetch raster
+  fetch_si <- lapply(1:length(stack_lst), function(i){
+
+    fr <- stack_lst[[i]]
+
+    if(verbose == TRUE) {
+      message(paste0(names(fr)))
+    }
+
+    # loop through each fetch raster and calculate shallow/deep SI
+    si_lst <- lapply(1:length(water_depths), function(z){
+
+      # message(paste0(names(fr), " - ", water_depths[[z]]))
+      si_fetch(
+        r          = fr,
+        depth_zone = water_depths[[z]],
+        verbose    = verbose
+      )
+
+    }) %>%
+      terra::rast()
+
+  })
+
+  # get layers names
+  stk_names <- lapply(1:length(stack_lst), function(k){
+    names(stack_lst[[k]])
+  }) %>%
+    unlist()
+
+  # name stack by layer names and make sds
+  fetch_si <-
+    fetch_si %>%
+    stats::setNames(c(stk_names)) %>%
+    terra::sds()
+
+  return(fetch_si)
+}
+
+calc_sedim_si <- function(
+    stack_lst,
+    verbose    = TRUE
+) {
+
+  # loop through each sedim raster
+  sedim_si <- lapply(1:length(stack_lst), function(i){
+
+    sed_dep <- stack_lst[[i]]
+
+    if(verbose == TRUE) {
+      message(paste0(names(stack_lst[[i]])))
+    }
+
+    # apply SI function to mean sediment deposition
+    sed_dep <-
+      stack_lst[[i]] %>%
+      terra::app(fun = si_sedim_func) %>%
+      stats::setNames(c(gsub("_sediment_deposition", "_si_sediment_deposition", names(stack_lst[[i]]))))
+
+  })
+
+  # get layers names
+  stk_names <- lapply(1:length(stack_lst), function(k){
+    gsub("_sediment_deposition", "_si_sediment_deposition", names(stack_lst[[k]]))
+  }) %>%
+    unlist()
+
+  # name stack by layer names and make sds
+  sedim_si <-
+    sedim_si %>%
+    stats::setNames(c(stk_names)) %>%
+    terra::sds()
+
+  return(sedim_si)
+
+}
+
 #' Depth relationship Function
 #' @param x numeric value representing depth
 #' @param ...
@@ -241,29 +354,27 @@ depth_func <- function(x, ...) {
 
 depth_zone <- function(
     depth_rast,
-    depth_zone = "shallow"
+    water_depth = "shallow"
     ) {
 
-#   depth_rast <- depth_stk$S07_G510_new_FWOA_32_32_water_depth
-# plot(depth_rast)
-
-  if(depth_zone == "shallow") {
+  if(water_depth == "shallow") {
 
     # depth_mask
     # mask for shallow waters
-    shallow_mask <- terra::setValues(
+    depth_mask <- terra::setValues(
       depth_rast, ifelse(terra::values(depth_rast) == 2, 1, NA)
     )
 
   } else {
 
     # mask for deep waters
-    deep_mask <- terra::setValues(
+    depth_mask <- terra::setValues(
       depth_rast, ifelse(terra::values(depth_rast) == 3, 1, NA)
     )
 
   }
 
+  return(depth_mask)
 }
 
 #   plot(depth_rast)
