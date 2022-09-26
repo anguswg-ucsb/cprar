@@ -406,6 +406,43 @@ extract_fetch <- function(
 #   rm(si_ms, si_cool, si_avg, si_warm, si_warm_func, si_cool_func, si_av_func, resamp_r)
 # }
 
+#' Package up all layers into single SpatRasterDataset
+#' @param cv SpatRasterDataset Commercial Viability
+#' @param ov SpatRasterDataset Oyster Viability
+#' @param aoc SpatRasterDataset AOC
+#' @param aoc_mean SpatRasterDataset AOC mean
+#' @param aoc_sd SpatRasterDataset AOC Standard Deviation
+#' @param verbose logical, whether messages should print or not. Default is TRUE, print messages.
+#' @return SpatRasterDataset with all SpatRasters for each model year
+#' @export
+finalize_stacks <- function(
+    cv,
+    ov,
+    aoc,
+    aoc_mean,
+    aoc_sd,
+    verbose = TRUE
+    ) {
+
+  if(verbose == TRUE) {
+    message(paste0("Preparing final dataset..."))
+  }
+
+  final_stk <- lapply(1:length(aoc), function(i) {
+
+    if(verbose == TRUE) {
+      message(paste0(i, "/", length(aoc)))
+    }
+
+    finalr <- c(cv[[i]], ov[[i]], aoc[[i]], aoc_mean[[i]], aoc_sd[[i]])
+
+  }) %>%
+    terra::sds() %>%
+    stats::setNames(c(gsub("_cv", "", names(cv))))
+
+  return(final_stk)
+
+}
 #' Rasterize all Masterplan Oyster CSVs in a directory.
 #' @param data_paths dataframe containing paths to Masterplan Oyster Flatfiles/CSVs. Dataframe can be created from parse_files() function
 #' @param grid SF object representing the MP 480x480 grid. Contains GridID column to match with Masterplan CSV
@@ -572,6 +609,46 @@ make_rasters <- function(
     verbose = TRUE
   )
 
+  # Generate Alternative Oyster Cultch SpatRasterDataset from CV and OV
+  aoc_stk <- get_aoc(
+    cv      = cv_stk,
+    ov      = ov_stk,
+    verbose = TRUE
+  )
+
+  # Combine data into single dataset
+  final_stk <- finalize_stacks(
+    cv       = cv_stk,
+    ov       = ov_stk,
+    aoc      = aoc_stk,
+    aoc_mean = aoc_means,
+    aoc_sd   = aoc_sd,
+    verbose  = TRUE
+  )
+
+  # AOC means per period
+  aoc_mean_stk <- get_aoc_mean(
+    aoc     = aoc_stk,
+    verbose = TRUE
+  )
+
+  # AOC Standard Deviation per period
+  aoc_sd_stk <- get_aoc_sd(
+    aoc     = aoc_stk,
+    verbose = TRUE
+  )
+
+  # Combine data into single dataset
+  final_stk <- finalize_stacks(
+    cv       = cv_stk,
+    ov       = ov_stk,
+    aoc      = aoc_stk,
+    aoc_mean = aoc_mean_stk,
+    aoc_sd   = aoc_sd_stk,
+    verbose  = TRUE
+  )
+
+  # data_paths$
   # plot(road_buffer$layer)
   # plot(road_si)
 

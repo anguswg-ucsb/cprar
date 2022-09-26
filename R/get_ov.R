@@ -36,10 +36,15 @@ extract_ov <- function(
 
 
     }) %>%
-      terra::sds() %>%
-      stats::setNames(c(paste0(names(st), "_ov")))
+      terra::rast()
 
-  })
+    # %>%
+    #   terra::sds() %>%
+    #   stats::setNames(c(paste0(names(st), "_ov")))
+
+  }) %>%
+    stats::setNames(c(paste0(names(stack_lst), "_ov"))) %>%
+    terra::sds()
 
   return(ov_stk)
 
