@@ -1,33 +1,72 @@
 library(sf)
 library(doParallel)
 library(parallel)
-library(foreach)
+# library(foreach)
 library(dplyr)
 
 library(tidyverse)
 library(sf)
 library(terra)
 library(raster)
-library(fasterize)
 
 source("R/parse_directory.R")
 source("R/get_fetch.R")
+source("R/utils.R")
+source("R/si_functions.R")
+source("R/roads.R")
+source("R/get_ov.R")
+source("R/get_cv.R")
+source("R/get_aoc.R")
+source("R/extract_rasters.R")
 
 # hsi grid for resampling
 # hsi_grid <- terra::rast("data/hsi_grid.tif")
 base_folder = "D:/cpra"
 
 # model directories
-model_dirs     <- parse_directory(base_folder = base_folder)
-
-# landtype files
-file_paths <- parse_files(dir = model_dirs$path[1])
-
-# landtype files
-landtype_files <-
+model_dirs <-
+  base_folder %>%
+  parse_directory()
+# dplyr::left_join(
+#   model_years(),
+#   by = c("year" = "model_year")
+# ) %>%
+# dplyr::group_by(model_dir, scenario) %>%
+# dplyr::arrange(num_year, .by_group = T) %>%
+# dplyr::ungroup()
+unique(model_dirs$type)
+land_path <-
   model_dirs %>%
-  dplyr::filter(type == "lndtyp")
-r_path = landtype_files$full_path[1]
+  dplyr::filter(type == "lndtyp") %>%
+  dplyr::slice(1) %>%
+  .$full_path
+
+# hsi grid template
+hsi_grid <- readRDS("data/grid_template.rds")
+
+road_buffer_path = "D:/cpra_fixed/road_buffer.gpkg"
+
+final_stk <- make_rasters(
+  data_paths       = model_dirs,
+  grid             = hsi_grid,
+  road_buffer_path = road_buffer_path
+)
+
+final_stk$S08_G511_without_diversions_12_12$S08_G511_without_diversions_12_12_cv_deep
+# CRS
+crs <- CRS('+init=EPSG:26915')
+
+# Template raster to rasterize data onto
+r <- raster(
+  crs = crs,
+  ext = extent(hsi_grid),
+  res = c(480, 480)
+)
+
+
+# ********************************************************************************************************
+# ********************************************************************************************************
+
 # old fetch file
 # tmpf  <- raster::raster("C:/Users/angus/OneDrive/Desktop/lynker/CPRA/data/fetch/raster/fetch_mean_dist_480m_resampled.tif")
 #

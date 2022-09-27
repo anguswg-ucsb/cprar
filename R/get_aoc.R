@@ -35,7 +35,7 @@ get_aoc <- function(
     # names(cv[[i]]) %in% paste0(gsub("_si_fetch_shallow", "",  names(cv[[i]][[1]])), "_cv")
 
     # SI OV years to calculate AOC for
-    ov_years     <- ov[[i]][[grep('ov', names(ov_stk[[i]]), value = T)]]
+    ov_years     <- ov[[i]][[grep('ov', names(ov[[i]]), value = T)]]
 
     # Loop over OV SpatRasterDatasets for each scenario/model run/year range
     aoc_rasts <- lapply(1:terra::nlyr(ov_years), function(z) {

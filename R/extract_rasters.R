@@ -1,65 +1,3 @@
-library(sf)
-library(doParallel)
-library(parallel)
-# library(foreach)
-library(dplyr)
-
-library(tidyverse)
-library(sf)
-library(terra)
-library(raster)
-
-source("R/parse_directory.R")
-source("R/get_fetch.R")
-source("R/utils.R")
-source("R/si_functions.R")
-source("R/roads.R")
-
-# hsi grid for resampling
-# hsi_grid <- terra::rast("data/hsi_grid.tif")
-base_folder = "D:/cpra"
-
-# model directories
-model_dirs <-
-  base_folder %>%
-  parse_directory()
-  # dplyr::left_join(
-  #   model_years(),
-  #   by = c("year" = "model_year")
-  # ) %>%
-  # dplyr::group_by(model_dir, scenario) %>%
-  # dplyr::arrange(num_year, .by_group = T) %>%
-  # dplyr::ungroup()
-
-# hsi grid template
-hsi_grid <- readRDS("data/grid_template.rds")
-
-# CRS
-crs <- CRS('+init=EPSG:26915')
-
-# Template raster to rasterize data onto
-r <- raster(
-  crs = crs,
-  ext = extent(hsi_grid),
-  res = c(480, 480)
-)
-terra::ext(make_grid())
-
-make_grid()
-
-
-
-path_df <-
-  model_dirs %>%
-  dplyr::filter(decade == "decade_1")
-
-  # dplyr::filter(type == "OYSTE", scenario == "07", decade == "decade_1")
-
-
-hsi_grid <- readRDS("data/grid_template.rds")
-paths$full_path
-grid <- hsi_grid
-
 #' Rasterize data from MP CSV flat file
 #' @param csv_path character path to Masterplan CSV. File ending in OYSTE.csv
 #' @param grid SF object representing the MP 480x480 grid. Contains GridID column to match with Masterplan CSV
@@ -96,8 +34,8 @@ rasterize_csv <- function(
 
   # Template raster to rasterize data onto (use raster for fasterize::fasterize())
   r <- raster::raster(
-    crs = raster::crs(hsi_grid),
-    ext = raster::extent(hsi_grid),
+    crs = raster::crs(grid),
+    ext = raster::extent(grid),
     res = c(480, 480)
   )
 
@@ -407,6 +345,7 @@ extract_fetch <- function(
 # }
 
 #' Package up all layers into single SpatRasterDataset
+#' @param depth SpatRasterDataset Water depth
 #' @param cv SpatRasterDataset Commercial Viability
 #' @param ov SpatRasterDataset Oyster Viability
 #' @param aoc SpatRasterDataset AOC
@@ -416,6 +355,7 @@ extract_fetch <- function(
 #' @return SpatRasterDataset with all SpatRasters for each model year
 #' @export
 finalize_stacks <- function(
+    depth,
     cv,
     ov,
     aoc,
@@ -434,7 +374,7 @@ finalize_stacks <- function(
       message(paste0(i, "/", length(aoc)))
     }
 
-    finalr <- c(cv[[i]], ov[[i]], aoc[[i]], aoc_mean[[i]], aoc_sd[[i]])
+    finalr <- c(depth[[i]], cv[[i]], ov[[i]], aoc[[i]], aoc_mean[[i]], aoc_sd[[i]])
 
   }) %>%
     terra::sds() %>%
@@ -473,6 +413,7 @@ make_rasters <- function(
 
   # data names
   lst_names <- unique(data_paths$model_range)
+  # lst_names <- unique(data_paths$model_range)[1]
   # lst_names <- unique(paste0("S", data_paths$scenario, "_", data_paths$model_dir))
 
   # seperate paths by data type
@@ -515,7 +456,8 @@ make_rasters <- function(
     type_lst[["OYSTE"]] %>%
     dplyr::group_by(model_dir, scenario, range) %>%
     dplyr::arrange(year, .by_group = T) %>%
-    dplyr::slice(1:2) %>%
+    # dplyr::ungroup() %>%
+    # dplyr::slice(1) %>%
     dplyr::group_split()
 
   # Depth inundation files
@@ -523,6 +465,8 @@ make_rasters <- function(
     type_lst[["inun"]] %>%
     dplyr::group_by(model_dir, scenario, range) %>%
     dplyr::arrange(year, .by_group = T) %>%
+    # dplyr::ungroup() %>%
+    # dplyr::slice(1) %>%
     dplyr::group_split()
 
   # Land Type TIF files
@@ -530,8 +474,15 @@ make_rasters <- function(
     type_lst[["lndtyp"]] %>%
     dplyr::group_by(model_dir, scenario, range) %>%
     dplyr::arrange(year, .by_group = T) %>%
+    # dplyr::ungroup() %>%
+    # dplyr::slice(1) %>%
     dplyr::group_split()
 
+  # extract depth rasters and process into bins
+  fetch_stk <- extract_fetch(
+    data_paths = land_paths,
+    verbose    = TRUE
+  )
 
   # loop through paths and rasterize each column variable in each MP CSV
   model_stk <- lapply(1:length(mp_paths), function(i) {
@@ -563,12 +514,6 @@ make_rasters <- function(
   # extract depth rasters and process into bins
   depth_stk <- extract_depth(
     data_paths = depth_paths,
-    verbose    = TRUE
-  )
-
-  # extract depth rasters and process into bins
-  fetch_stk <- extract_fetch(
-    data_paths = land_paths,
     verbose    = TRUE
   )
 
@@ -616,16 +561,6 @@ make_rasters <- function(
     verbose = TRUE
   )
 
-  # Combine data into single dataset
-  final_stk <- finalize_stacks(
-    cv       = cv_stk,
-    ov       = ov_stk,
-    aoc      = aoc_stk,
-    aoc_mean = aoc_means,
-    aoc_sd   = aoc_sd,
-    verbose  = TRUE
-  )
-
   # AOC means per period
   aoc_mean_stk <- get_aoc_mean(
     aoc     = aoc_stk,
@@ -640,6 +575,7 @@ make_rasters <- function(
 
   # Combine data into single dataset
   final_stk <- finalize_stacks(
+    depth    = depth_stk,
     cv       = cv_stk,
     ov       = ov_stk,
     aoc      = aoc_stk,
@@ -648,159 +584,11 @@ make_rasters <- function(
     verbose  = TRUE
   )
 
-  # data_paths$
-  # plot(road_buffer$layer)
-  # plot(road_si)
-
-
-
-
-  # plot(fetch_stk$S07_G511_without_diversions_32_32_fetch)
-  # Calculate Oyster Viability
-
-
-  # r1 <- rast(matrix(sample(1:4), nrow = 2, ncol = 2), crs = terra::crs(sedim_stk$S07_G510_new_FWOA$sedim_S07_03_03))
-  # r2 <- rast(matrix(sample(1:4), nrow = 2, ncol = 2), crs = terra::crs(sedim_stk$S07_G510_new_FWOA$sedim_S07_03_03))
-  # r3 <- rast(matrix(sample(50:100, size =4), nrow = 2, ncol = 2), crs = terra::crs(sedim_stk$S07_G510_new_FWOA$sedim_S07_03_03))
-  # plot(r1)
-  # plot(r2)
-  # plot(r3)
-  # mean_tmp <- mean(r1, r2, r3)
-  # sttt <- c(r1, r2, r3, mean_tmp)
-  # sttt
-  # plot(sttt)
-  # mean_tmp <- mean(r1, r2, r3)
-  # m <- matrix(1:25, nrow=5, ncol=5)
-  # rm <- rast(m)
-  # plot(mean_tmp)
-  # sedim_stk[[1]][[1]]$sedim_S07_03_03
-  # tmp  <- c(model_stk)
-  # names(tmp)
-  # object.size(tmp)
-
-  mp_rast[[grep('sedim', names(mp_rast), value = T)]]
-
-  names(mp_rast)
-  lapply(1:length(mp_rast), function(i) {
-
-
-    # sedim <-
-
-
-  })
-tmp <- mp_rast[[1]]
-
-object.size(  (mp_rast))
-  mp_rast[[3]][[c("sedim_S07_05_05")]]
-  # file_name <- gsub(".csv", ".rds", mp_csv_files[i])
-
-  logger::log_info("Reading MP CSV - mp_csv_files[i]")
-
-  # Read MP CSV
-  mp <- readr::read_csv(
-    file      = paths$full_path[1]
-  )
-
-  mp_grid     <- dplyr::left_join(                               # Join year w/ MP grid polygon
-    hsi_grid,
-    mp,
-    by = "GridID"
-  ) %>%
-    terra::vect()
-
-  # Template raster to rasterize data onto
-  r <- terra::rast(
-    crs = terra::crs(hsi_grid),
-    ext = terra::ext(hsi_grid),
-    res = c(480, 480)
-  )
-
-  # columns to lapply over and rasterize
-  layer_names <- grep(
-    "GridID",
-    x      = names(mp_grid),
-    value  = T,
-    invert = T
-    )
-
-
-  message(paste0("Rasterizing MP CSV... "))
-
-  # rasterize each column
-  mp_rast <- lapply(1:length(layer_names), function(y) {
-
-    message(paste0(y, "/", length(layer_names), " - ", layer_names[[y]]))
-
-    terra::rasterize(
-      x = mp_grid,
-      y = r,
-      layer_names[[y]]
-    )
-
-  })
-
-  mp_rast
-  mp_rast <- terra::rasterize(
-    x = mp_grid,
-    y = r,
-    "pct_land"
-    )
-  plot(mp_rast)
-
+  return(final_stk)
 }
 
 
 
-# SI 2 function
-si2_func <- function(x, ...) {
-  ifelse(x < 5, 0,
-         ifelse(x >= 5 & x < 10, (0.06*x) - 0.3,
-                ifelse(x >= 10 & x < 15, (0.07*x) - 0.4,
-                       ifelse(x >= 15 & x < 18, ((0.1167)*x) -1.1,
-                              ifelse(x >= 18 & x < 22, 1.0,
-                                     ifelse(x >= 22 & x < 30, ((-0.0875)*x) + 2.925,
-                                            ifelse(x >= 30 & x < 35, ((-0.04)*x) + 1.5,
-                                                   ifelse(x >= 35 & x < 40, ((-0.02)*x) + 0.8, 0)
-                                            ))))))
-  )
-
-}
-
-# SI 3 cool function
-si3_cool_func <- function(x, ...) {
-  ifelse(x <= 1, 0,
-         ifelse(x > 1 & x < 8, (0.1429*x) - 0.1429,
-                ifelse(x >= 8 & x < 10, 1,
-                       ifelse(x >= 10 & x < 15, ((-0.16)*x) + 2.6,
-                              ifelse(x >= 15 & x < 20, ((-0.0398)*x) + 0.797,
-                                     ifelse(x >= 20, 0.001, 0)
-                              ))))
-  )
-}
-
-# SI 3 warm function
-si3_warm_func <- function(x, ...) {
-  ifelse(x <= 2, 0,
-         ifelse(x > 2 & x < 8, (0.1667*x) - 0.3333,
-                ifelse(x >= 8 & x < 10, 1,
-                       ifelse(x >= 10 & x < 15, ((-0.16)*x) + 2.6,
-                              ifelse(x >= 15 & x < 20, ((-0.0398)*x) + 0.797,
-                                     ifelse(x >= 20, 0.001, 0)
-                              ))))
-  )
-}
-
-# SI 4 average function
-si4_avg_func <- function(x, ...) {
-  ifelse(x < 5, 0,
-         ifelse(x >= 5 & x < 10, (0.2*x) - 1.0,
-                ifelse(x >= 10 & x < 15, 1,
-                       ifelse(x >= 15 & x < 20, ((-0.16)*x) + 3.4,
-                              ifelse(x >= 20 & x < 25, ((-0.04)*x) + 0.9996,
-                                     ifelse(x >= 25, 0.001, 0)
-                              ))))
-  )
-}
 
 # Calculate tradition cultch model HSI
 # inputs:
@@ -850,14 +638,3 @@ get_trad_cultch <- function(mp
 
   return(hsi_st)
 }
-
-model_dirs$path[1]
-library(stringr)
-str_match(model_dirs$path[1], "\\w{36}\\d" )
-str_extract(model_dirs$path[1], "([^_]+$)")
-gsub(".*(\\d{2}_\\d{2}).*", "\\1", model_dirs$path[1])
-
-# landtype files
-file_paths <- parse_files(dir = model_dirs$path[1])
-
-# extract_m

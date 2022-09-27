@@ -571,7 +571,7 @@ side_summary <- function(
   clust <- parallel::makeCluster(ncores)
 
   # export variables to clusters and load packages
-  parallel::clusterExport(clust, c('cell_res', 'max_dist', 'rmat', 'idx', "side_count", "check_cols",
+  parallel::clusterExport(clust, c('cell_res', 'max_dist', "side_count", "check_cols",
                                    "check_rows", "check_length", "m", "indices_df", "verbose"), envir=environment())
 
   # export packages to clusters and load
