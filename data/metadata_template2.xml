@@ -1,0 +1,111 @@
+<metadata>
+  <idinfo>
+    <citation>
+      <citeinfo>
+        <origin>Rocky Wagner, Louisiana Coastal Protection and Restoration Authority, Senior Coastal Resources Scientist</origin>
+        <pubdate>20220303</pubdate>
+        <title>aoc_deep_01</title>
+        <geoform>raster digital data</geoform>
+      </citeinfo>
+    </citation>
+    <descript>
+      <abstract>AOC suitability index for deep water operations (assumes larger boats with refrigeration capability) based on oyster viability and commercial viability; year 1. Deep-water operations are assumed to use larger vessels and are limited to areas with water depths of greater than 5 ft.</abstract>
+      <purpose>The project team (Royal Engineers and Consultants, LLC; Lynker, Inc; and Denise Reed, LLC) developed models to describe the suitability of Louisiana waters for oyster farming using either traditional culture or alternative oyster culture (AOC) methods and developed geospatial layers to quantify each element of the traditional culture and AOC models (e.g., salinity, sediment deposition, land/water, fetch, etc.). Model results were developed based on 10 years of outputs from the 2023 Coastal Master Plan models. The naming convention for these files includes the parameter name, followed by either the model year (01-10) or an indication of whether the output represents a mean or standard deviation of all years. Additional information can be found in the project team report, available on request from CPRA.</purpose>
+    </descript>
+    <timeperd>
+      <timeinfo>
+        <sngdate>
+          <caldate>20220303</caldate>
+        </sngdate>
+      </timeinfo>
+      <current>2023 Coastal Master Plan Modeling Grid</current>
+    </timeperd>
+    <status>
+      <progress>Complete</progress>
+      <update>Unknown</update>
+    </status>
+    <spdom>
+      <bounding>
+        <westbc>-93.991532</westbc>
+        <eastbc>-88.718744</eastbc>
+        <northbc>30.882048</northbc>
+        <southbc>28.858569</southbc>
+      </bounding>
+    </spdom>
+    <keywords>
+      <theme>
+        <themekt>None</themekt>
+        <themekey>Predictive, Model, 2023 Coastal Master Plan, Louisiana, LA, Coastal Zone</themekey>
+      </theme>
+      <theme>
+        <themekt>ISO 19115 Topic Categories</themekt>
+        <themekey>environment</themekey>
+      </theme>
+    </keywords>
+    <accconst>None</accconst>
+    <useconst>None</useconst>
+    <datacred>The model code was developed in R by Lynker, Inc., under a subcontract to Royal Engineers and Consultants, LLC.</datacred>
+    <native> Version 6.2 (Build 9200) ; Esri ArcGIS 10.8.0.12790</native>
+  </idinfo>
+  <spdoinfo>
+    <direct>Raster</direct>
+    <rastinfo>
+      <rasttype>Grid Cell</rasttype>
+    </rastinfo>
+  </spdoinfo>
+  <spref>
+    <horizsys>
+      <planar>
+        <mapproj>
+          <mapprojn>NAD 1983 UTM Zone 15N</mapprojn>
+          <transmer>
+            <sfctrmer>0.9996</sfctrmer>
+            <longcm>-93.0</longcm>
+            <latprjo>0.0</latprjo>
+            <feast>500000.0</feast>
+            <fnorth>0.0</fnorth>
+          </transmer>
+        </mapproj>
+        <planci>
+          <plance>coordinate pair</plance>
+          <coordrep>
+            <absres>0.000000002220024164500956</absres>
+            <ordres>0.000000002220024164500956</ordres>
+          </coordrep>
+          <plandu>meter</plandu>
+        </planci>
+      </planar>
+      <geodetic>
+        <horizdn>D North American 1983</horizdn>
+        <ellips>GRS 1980</ellips>
+        <semiaxis>6378137.0</semiaxis>
+        <denflat>298.257222101</denflat>
+      </geodetic>
+    </horizsys>
+  </spref>
+  <metainfo>
+    <metd>20220303</metd>
+    <metc>
+      <cntinfo>
+        <cntorgp>
+          <cntorg>Louisiana Coastal Protection and Restoration Authority</cntorg>
+          <cntper>Rocky Wagner</cntper>
+        </cntorgp>
+        <cntpos>Senior Coastal Resources Scientist</cntpos>
+        <cntaddr>
+          <addrtype>mailing</addrtype>
+          <address>P.O. Box 44027</address>
+          <city>Baton Rouge</city>
+          <state>Louisiana</state>
+          <postal>70804</postal>
+          <country>US</country>
+        </cntaddr>
+        <cntvoice>225-342-1485</cntvoice>
+        <cntemail>Rocky.Wager@LA.GOV</cntemail>
+      </cntinfo>
+    </metc>
+    <metstdn>FGDC Content Standard for Digital Geospatial Metadata</metstdn>
+    <metstdv>FGDC-STD-001-1998</metstdv>
+    <mettc>local time</mettc>
+  </metainfo>
+</metadata>

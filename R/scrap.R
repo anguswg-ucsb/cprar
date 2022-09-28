@@ -18,6 +18,7 @@ source("R/get_ov.R")
 source("R/get_cv.R")
 source("R/get_aoc.R")
 source("R/extract_rasters.R")
+source("R/save_out.R")
 
 # hsi grid for resampling
 # hsi_grid <- terra::rast("data/hsi_grid.tif")
@@ -34,12 +35,12 @@ model_dirs <-
 # dplyr::group_by(model_dir, scenario) %>%
 # dplyr::arrange(num_year, .by_group = T) %>%
 # dplyr::ungroup()
-unique(model_dirs$type)
-land_path <-
-  model_dirs %>%
-  dplyr::filter(type == "lndtyp") %>%
-  dplyr::slice(1) %>%
-  .$full_path
+# unique(model_dirs$type)
+# land_path <-
+#   model_dirs %>%
+#   dplyr::filter(type == "lndtyp") %>%
+#   dplyr::slice(1) %>%
+#   .$full_path
 
 # hsi grid template
 hsi_grid <- readRDS("data/grid_template.rds")
@@ -51,6 +52,21 @@ final_stk <- make_rasters(
   grid             = hsi_grid,
   road_buffer_path = road_buffer_path
 )
+
+
+# save_out(
+#   rasters   = final_stk,
+#   file_path = "D:/cpra_model_runs",
+#   verbose   = TRUE
+# )
+
+make_plot(
+  stk       = final_stk,
+  save_path = "D:/cpra_plots",
+  verbose   = TRUE
+)
+save_path <- "D:/cpra_plots"
+# file_path <- "D:/cpra_model_runs"
 
 final_stk$S08_G511_without_diversions_12_12$S08_G511_without_diversions_12_12_cv_deep
 # CRS

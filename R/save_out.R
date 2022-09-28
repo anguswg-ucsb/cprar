@@ -36,7 +36,7 @@ save_out <- function(
       # save TIF files
       terra::writeRaster(
         stk[[z]],
-        paste0(file_path, "/",  names(final_stk)[i], "/", names(stk[[z]]), ".tif")
+        paste0(file_path, "/",  names(rasters)[i], "/", names(stk[[z]]), ".tif")
       )
 
       }
@@ -44,13 +44,6 @@ save_out <- function(
     }
 
 }
-
-save_out(
-  rasters   = final_stk,
-  file_path = "D:/cpra_model_runs",
-  verbose   = TRUE
-  )
-# file_path <- "D:/cpra_model_runs"
 
 
 
