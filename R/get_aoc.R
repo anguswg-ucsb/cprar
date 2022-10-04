@@ -69,7 +69,7 @@ get_aoc <- function(
 
   }) %>%
     terra::sds() %>%
-    stats::setNames(c(paste0(gsub("cv", "aoc", names(cv)))))
+    stats::setNames(c(paste0(gsub("ov", "aoc", names(ov)))))
 
   return(aoc_stk)
 
@@ -85,6 +85,7 @@ get_aoc_mean <- function(
     verbose = TRUE
     ) {
 
+  # aoc_stk
   if(verbose == TRUE) {
     message(paste0("Calculating AOC means..."))
   }

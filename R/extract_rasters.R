@@ -457,7 +457,7 @@ make_rasters <- function(
     dplyr::group_by(model_dir, scenario, range) %>%
     dplyr::arrange(year, .by_group = T) %>%
     # dplyr::ungroup() %>%
-    # dplyr::slice(1) %>%
+    # dplyr::slice(1:2) %>%
     dplyr::group_split()
 
   # Depth inundation files
