@@ -75,22 +75,19 @@ create_raster_metadata <- function(
 
 }
 
-#' Create metadata XML files for layers in SpatialRasterDataset
+#' Create metadata XML files for layers in SpatialRasterDataset from scratch
 #'
 #' @param srd SpatialRasterDataset of finalized AOC raster layers
 #' @param file_path character, base file path to save metadata files to
 #' @param verbose logical, whether to print messages or not. Default is TRUE, prints messages
 #' @return XML files saved to specified file path
 #' @export
-finalize_metadata <- function(
+create_metadata <- function(
     srd,
     file_path,
     verbose = TRUE
     ) {
-  srd       = final_stk[1:2]
-  srd
-  file_path = "D:/cpra_metadata"
-  verbose   = TRUE
+
   # check if base folder exists, if not, create it
   if(!dir.exists(file_path) == TRUE) {
 
@@ -119,23 +116,17 @@ finalize_metadata <- function(
         message(paste0("Saving raster metadata - ", names(stk[[z]]), ".xml", " - ", z, "/", terra::nlyr(stk)))
       }
 
-      # z <- 1
-      # names(stk[[z]])
-      # names(stk)
-      # # save out meta data files for raster layer
-      # create_raster_metadata(
-      #   r           = stk[[z]],
-      #   output_file = paste0(file_path, "/",  names(srd)[i], "_metadata", "/", names(stk[[z]]), ".xml")
-      # )
+      # save out meta data files for raster layer
+      create_raster_metadata(
+        r           = stk[[z]],
+        output_file = paste0(file_path, "/",  names(srd)[i], "_metadata", "/", names(stk[[z]]), ".xml")
+      )
 
     }
 
   }
 
 }
-
-
-
 
 
 #' Create metadata XML files for layers in SpatialRasterDataset from a template XML file
@@ -147,20 +138,13 @@ finalize_metadata <- function(
 #' @param verbose logical, whether to print messages or not. Default is TRUE, prints messages
 #' @return XML files saved to specified file path
 #' @export
-finalize_metadata2 <- function(
+finalize_metadata <- function(
     srd,
     file_path,
     template,
     base_folder,
     verbose = TRUE
 ) {
-
-  # srd       = final_stk[1:2]
-  # srd
-  # base_folder <- "D:/cpra"
-  # file_path = "D:/cpra_metadata"
-  # template = "data/metadata_template2.xml"
-  # verbose   = TRUE
 
   # model file directory
   file_dir <-
@@ -209,21 +193,19 @@ finalize_metadata2 <- function(
         col.names = FALSE,
         row.names = FALSE
       )
-      # names(stk)
-      # # save out meta data files for raster layer
-      # create_raster_metadata(
-      #   r           = stk[[z]],
-      #   output_file = paste0(file_path, "/",  names(srd)[i], "_metadata", "/", names(stk[[z]]), ".xml")
-      # )
-
     }
 
   }
 
 }
-# Write meta data files
-# meta_path      <-  paste0("data/metadata/", names(aoc), "_",  run_year, ".xml" )
 
+#' Fill in raster information given template XML file
+#'
+#' @param r SpatRaster file
+#' @param template character path to XML template
+#' @param file_dir dataframe of model files, from parse_directory()
+#'
+#' @return character vector in XML format
 make_metadata <- function(r, template, file_dir) {
 
   # name of layer
